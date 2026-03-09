@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Randomization Activity</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #F3F3F3; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // ─── Design tokens ──────────────────────────────────────────────────────────
+    const C = {
+      purple: "#6F00FF", blue: "#0082FF", black: "#202020", darkGray: "#333132",
+      midGray: "#999999", lightGray: "#F3F3F3", intLightGray: "#E0E0E0", white: "#FFFFFF",
+      successBg: "#E8F5E9", successBorder: "#388E3C", successText: "#1B5E20",
+      errorBg: "#FFEBEE", errorBorder: "#D32F2F", errorText: "#B71C1C",
+      warnBg: "#FFF8E1", warnBorder: "#F9A825", warnText: "#E65100",
+      infoBg: "#F0F4FF", infoBorder: "#0082FF",
+    };
+
+    // ─── Shared components ───────────────────────────────────────────────────────
+
+    // TODO: Replace with shared InstructionCard component
+    function InstructionCard({ children, title, borderColor = C.blue, bg = C.infoBg }) {
+      return (
+        <div style={{
+          background: bg, borderLeft: `4px solid ${borderColor}`,
+          borderRadius: "0 8px 8px 0", padding: "16px", marginBottom: "16px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}>
+          {title && <div style={{ fontSize: "1.2rem", fontWeight: 700, color: C.black, marginBottom: "8px" }}>{title}</div>}
+          {children}
+        </div>
+      );
+    }
+
+    // TODO: Replace with shared StyledButton component
+    function StyledButton({ children, onClick, disabled, variant = "primary", style = {} }) {
+      const [hovered, setHovered] = useState(false);
+      const base = {
+        primary:   { bg: C.black,     text: C.white,    border: C.black,     hBg: C.purple,   hBorder: C.purple },
+        secondary: { bg: C.lightGray, text: C.darkGray, border: C.lightGray, hBg: C.darkGray, hBorder: C.black },
+      }[variant] || {};
+      const ds = { background: C.midGray, color: C.white, border: `2px solid ${C.midGray}`, cursor: "not-allowed", boxShadow: "none", transform: "none" };
+      const as = hovered && !disabled
+        ? { background: base.hBg, color: C.white, border: `2px solid ${base.hBorder}`, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", transform: "scale(1.02)" }
+        : { background: base.bg, color: base.text, border: `2px solid ${base.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transform: "none" };
+      return (
+        <button onClick={disabled ? undefined : onClick}
+          onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+          style={{ padding: "10px 20px", fontSize: "1rem", fontWeight: 600, borderRadius: "8px",
+            cursor: disabled ? "not-allowed" : "pointer", transition: "all 0.2s ease",
+            ...(disabled ? ds : as), ...style }}>
+          {children}
+        </button>
+      );
+    }
+
+    function AlertBox({ type, children }) {
+      const map = {
+        success: { bg: C.successBg, border: C.successBorder, text: C.successText, icon: "✓" },
+        error:   { bg: C.errorBg,   border: C.errorBorder,   text: C.errorText,   icon: "✗" },
+        warning: { bg: C.warnBg,    border: C.warnBorder,    text: C.warnText,    icon: "⚠" },
+        info:    { bg: C.infoBg,    border: C.infoBorder,    text: C.blue,        icon: "ℹ" },
+      }[type] || {};
+      return (
+        <div style={{ background: map.bg, border: `1px solid ${map.border}`, borderRadius: "8px",
+          padding: "12px 16px", marginBottom: "16px", color: map.text,
+          fontSize: "1rem", fontWeight: 500, display: "flex", alignItems: "flex-start", gap: "10px" }}>
+          <span style={{ fontWeight: 700, fontSize: "1.1rem", flexShrink: 0 }}>{map.icon}</span>
+          <span>{children}</span>
+        </div>
+      );
+    }
+
+    function MCQOption({ label, reason, selected, onClick, disabled }) {
+      const [hovered, setHovered] = useState(false);
+      return (
+        <div onClick={disabled ? undefined : onClick}
+          onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+          style={{ padding: "14px 16px", borderRadius: "8px", cursor: disabled ? "default" : "pointer",
+            border: `2px solid ${selected ? C.purple : C.intLightGray}`,
+            background: selected ? "rgba(111,0,255,0.08)" : C.white,
+            display: "flex", alignItems: "flex-start", gap: "12px",
+            boxShadow: hovered && !disabled ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+            transform: hovered && !disabled ? "translateY(-1px)" : "none",
+            transition: "all 0.2s ease", marginBottom: "10px" }}>
+          <div style={{ width: "18px", height: "18px", borderRadius: "50%", flexShrink: 0, marginTop: "2px",
+            border: `2px solid ${selected ? C.purple : C.midGray}`,
+            background: selected ? C.purple : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {selected && <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: C.white }} />}
+          </div>
+          <div>
+            <div style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray }}>{label}</div>
+            {reason && (
+              <div style={{ fontSize: "0.85rem", fontStyle: "italic", color: C.midGray, marginTop: "3px" }}>
+                ({reason})
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // TODO: Replace with NavigationFooterV2 component
+    function NavBar({ onPrev, onNext, canPrev, canNext, nextLabel = "NEXT", nextDisabledMsg = "Complete this step to continue" }) {
+      const [tip, setTip] = useState(false);
+      return (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.white,
+          borderTop: `1px solid ${C.intLightGray}`, boxShadow: "0 -2px 10px rgba(0,0,0,0.1)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "14px 32px", zIndex: 1000 }}>
+          {canPrev ? <StyledButton variant="secondary" onClick={onPrev}>PREVIOUS</StyledButton> : <div />}
+          <div style={{ position: "relative" }}
+            onMouseEnter={() => !canNext && setTip(true)} onMouseLeave={() => setTip(false)}>
+            {tip && !canNext && (
+              <div style={{ position: "absolute", bottom: "110%", right: 0, background: "rgba(0,0,0,0.88)",
+                color: C.white, padding: "8px 12px", borderRadius: "6px", fontSize: "0.8rem",
+                fontWeight: 500, whiteSpace: "nowrap", pointerEvents: "none" }}>{nextDisabledMsg}</div>
+            )}
+            <StyledButton variant="primary" onClick={onNext} disabled={!canNext}>{nextLabel}</StyledButton>
+          </div>
+        </div>
+      );
+    }
+
+    function ProgressBar({ current, total }) {
+      return (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ fontSize: "0.8rem", fontWeight: 500, color: C.darkGray, marginBottom: "6px" }}>
+            Case Study {current} of {total}
+          </div>
+          <div style={{ height: "8px", borderRadius: "4px", background: C.intLightGray, overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: "4px", background: C.purple,
+              width: `${(current / total) * 100}%`, transition: "width 0.4s ease" }} />
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Study cards ─────────────────────────────────────────────────────────────
+
+    function Study1Card() {
+      return (
+        <InstructionCard title="Study Overview" borderColor={C.blue}>
+          <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
+            A colleague is testing whether a novel anxiolytic compound reduces anxiety-like behavior in mice using the <strong>elevated plus maze</strong>. The study includes <strong>24 same-sex mice</strong> assigned to two conditions — Treatment and Control — tested at a rate of <strong>6 mice per day over 4 days</strong>.
+          </p>
+        </InstructionCard>
+      );
+    }
+
+    function Study2Card({ showParams = false, prevParams = null }) {
+      return (
+        <InstructionCard title="New Study Overview" borderColor={C.blue}>
+          <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 10px 0", lineHeight: 1.6 }}>
+            The same colleague is now designing an immunohistochemistry study to quantify protein expression across treatment conditions. Tissue samples are stained in batches — each batch is processed together with a freshly prepared antibody dilution. Subtle between-batch variation is common: pipetting variability when preparing antibody dilutions, slight drift in incubation or development times, and operator fatigue across sequential runs can all affect staining intensity and background signal independent of treatment. Each staining batch accommodates <strong>6–12 slides</strong>. The colleague wants to <strong>block by staining batch</strong> to control for these between-batch differences. A power analysis indicates a minimum of <strong>10 samples per treatment arm</strong> (20 samples total for 2 conditions).
+          </p>
+          {showParams && prevParams && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
+              {[
+                { label: "Randomization", value: "Block randomization" },
+                { label: "Blocking factor", value: "Staining batch" },
+                { label: "Conditions", value: prevParams.nt },
+                { label: "Block size", value: prevParams.blockSize },
+                { label: "Total N", value: prevParams.n },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ background: "rgba(111,0,255,0.06)", border: `1px solid ${C.purple}`,
+                  borderRadius: "6px", padding: "6px 12px", fontSize: "0.85rem" }}>
+                  <span style={{ fontWeight: 600, color: C.darkGray }}>{label}: </span>
+                  <span style={{ color: C.purple, fontWeight: 600 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </InstructionCard>
+      );
+    }
+
+    // ─── Testing diagram ─────────────────────────────────────────────────────────
+
+    function TestingDiagram() {
+      const data = [
+        ["C","C","C","T","C","C"],
+        ["C","T","C","C","T","C"],
+        ["T","T","C","T","T","C"],
+        ["T","T","T","C","T","C"],
+      ];
+      const tColor = "#6F00FF", cColor = "#0082FF";
+      const dayLabels = ["Day 1","Day 2","Day 3","Day 4"];
+      const handlerLevel = ["Handler 1","Handler 1","Handler 2","Handler 2"];
+
+      return (
+        <div>
+          <div style={{ background: C.white, borderRadius: "10px", padding: "16px", border: `1px solid ${C.intLightGray}` }}>
+            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.darkGray, marginBottom: "12px",
+              textTransform: "uppercase", letterSpacing: "0.05em" }}>Colleague's Assignment (Simple Randomization)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 32px 32px 110px", alignItems: "center", gap: "6px 10px" }}>
+              <div /><div />
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: tColor, textAlign: "center" }}>T</div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: cColor, textAlign: "center" }}>C</div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: C.midGray }}>Handler</div>
+              {data.map((day, di) => {
+                const nT = day.filter(x => x === "T").length;
+                const nC = day.filter(x => x === "C").length;
+                return [
+                  <div key={`lbl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 600, color: C.darkGray }}>{dayLabels[di]}</div>,
+                  <div key={`sq-${di}`} style={{ display: "flex", gap: "5px" }}>
+                    {day.map((a, mi) => (
+                      <div key={mi} style={{ width: "32px", height: "32px", borderRadius: "6px", flexShrink: 0,
+                        background: a === "T" ? tColor : cColor, display: "flex", alignItems: "center",
+                        justifyContent: "center", color: C.white, fontSize: "0.75rem", fontWeight: 700 }}>{a}</div>
+                    ))}
+                  </div>,
+                  <div key={`nt-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: tColor, textAlign: "center" }}>{nT}</div>,
+                  <div key={`nc-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: cColor, textAlign: "center" }}>{nC}</div>,
+                  <div key={`hl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 500, color: C.darkGray }}>{handlerLevel[di]}</div>,
+                ];
+              })}
+            </div>
+            <div style={{ display: "flex", gap: "16px", marginTop: "12px", paddingTop: "10px", borderTop: `1px solid ${C.intLightGray}` }}>
+              {[["Treatment (T)", tColor], ["Control (C)", cColor]].map(([label, color]) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: color }} />
+                  <span style={{ fontSize: "0.8rem", color: C.darkGray, fontWeight: 500 }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginTop: "10px", padding: "10px 14px", borderRadius: "8px",
+            background: C.infoBg, border: `1px solid ${C.infoBorder}`,
+            fontSize: "0.85rem", fontWeight: 500, color: C.darkGray, lineHeight: 1.5 }}>
+            <strong>Note on handler identity:</strong> Rodents respond differently to different handlers — variations in technique, scent, and approach can alter stress responses and influence maze performance independent of any compound effect.
+          </div>
+          <div style={{ marginTop: "8px", padding: "10px 14px", borderRadius: "8px",
+            background: "#FFF3E0", border: "1px solid #F9A825",
+            fontSize: "0.85rem", fontWeight: 500, color: "#7B4F00", lineHeight: 1.5 }}>
+            <strong>The problem:</strong> Simple randomization produced an <strong>imbalance</strong> — Treatment mice cluster in Days 3–4, when a different handler is working. This means the two groups are not experiencing the same testing conditions, so any observed difference could partly reflect handler identity rather than the compound.
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Block sequence visualizer ───────────────────────────────────────────────
+
+    function BlockSequenceViz({ n, blockSize, nTreatments }) {
+      const labels  = nTreatments === 2 ? ["Treatment","Control"] : ["Treatment","Control","Saline"];
+      const colors  = ["#6F00FF","#0082FF","#00A86B"];
+      const abbrevs = nTreatments === 2 ? ["T","C"] : ["T","C","S"];
+
+      const blocks = useMemo(() => {
+        if (!n || !blockSize || !nTreatments) return [];
+        const result = [];
+        let remaining = n, blockNum = 0;
+        while (remaining > 0) {
+          const size = Math.min(blockSize, remaining);
+          const block = [];
+          for (let i = 0; i < size; i++) block.push(i % nTreatments);
+          // TODO: DEV — Replace with seeded PRNG for reproducible genuine randomness
+          for (let i = block.length - 1; i > 0; i--) {
+            const j = Math.floor((blockNum * 37 + i * 13 + 7) % (i + 1));
+            [block[i], block[j]] = [block[j], block[i]];
+          }
+          result.push(block);
+          remaining -= size;
+          blockNum++;
+        }
+        return result;
+      }, [n, blockSize, nTreatments]);
+
+      if (!blocks.length) return null;
+
+      return (
+        <div style={{ background: C.white, borderRadius: "10px", padding: "16px", border: `1px solid ${C.intLightGray}` }}>
+          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.darkGray, marginBottom: "12px",
+            textTransform: "uppercase", letterSpacing: "0.05em" }}>Generated Block Sequence</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+            {blocks.map((block, bi) => (
+              <div key={bi} style={{ border: `2px solid ${C.intLightGray}`, borderRadius: "8px",
+                padding: "8px", background: C.lightGray }}>
+                <div style={{ fontSize: "0.75rem", fontWeight: 600, color: C.midGray,
+                  marginBottom: "6px", textAlign: "center" }}>Block {bi + 1}</div>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  {block.map((t, i) => (
+                    <div key={i} style={{ width: "28px", height: "28px", borderRadius: "5px",
+                      background: colors[t], color: C.white, display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: "0.75rem", fontWeight: 700 }}>{abbrevs[t]}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: "16px", marginTop: "12px", paddingTop: "10px",
+            borderTop: `1px solid ${C.intLightGray}`, flexWrap: "wrap" }}>
+            {labels.map((l, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: colors[i] }} />
+                <span style={{ fontSize: "0.8rem", color: C.darkGray, fontWeight: 500 }}>{l} ({abbrevs[i]})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Study 2 feedback logic ───────────────────────────────────────────────────
+
+    const MIN_N = 20;
+    const INCUBATOR_MIN = 6;
+    const INCUBATOR_MAX = 12;
+
+    function getStudy2Feedback(blockSize, nt, n, minN) {
+      if (minN === undefined) minN = MIN_N;
+      const bs = parseInt(blockSize), ntv = parseInt(nt), ns = parseInt(n);
+      if (!bs || !ntv || !ns || bs < 1 || ntv < 1 || ns < 1) return null;
+
+      if (bs % ntv !== 0) return {
+        level: "wrong",
+        msg: `Block size (${bs}) must be a multiple of the number of conditions (${ntv}). Each staining batch needs exactly equal representation of all conditions — a batch of ${bs} can't be divided evenly among ${ntv} groups.`,
+      };
+      if (bs > INCUBATOR_MAX) return {
+        level: "wrong",
+        msg: `Block size ${bs} exceeds the maximum staining batch capacity of ${INCUBATOR_MAX} slides. Each block corresponds to one batch, so block size can't exceed ${INCUBATOR_MAX}.`,
+      };
+      if (bs < INCUBATOR_MIN) return {
+        level: "wrong",
+        msg: `Block size ${bs} is below the minimum staining batch capacity of ${INCUBATOR_MIN} slides. With only ${bs} slides per batch you're leaving substantial capacity unused — a block size between ${INCUBATOR_MIN} and ${INCUBATOR_MAX} makes better use of each staining run.`,
+      };
+      if (ns % bs !== 0) {
+        const roundedUp = Math.ceil(ns / bs) * bs;
+        return {
+          level: "wrong",
+          msg: `Total N (${ns}) must be a multiple of block size (${bs}) so that every staining batch is fully and evenly assigned across conditions. The nearest valid value at or above the power analysis minimum is ${Math.max(roundedUp, Math.ceil(minN / bs) * bs)}.`,
+        };
+      }
+      if (ns < minN) {
+        const minValid = Math.ceil(minN / bs) * bs;
+        return {
+          level: "wrong",
+          msg: `Total N (${ns}) falls short of the power analysis minimum of ${minN}. With block size ${bs}, the smallest valid total N that meets the minimum is ${minValid}.`,
+        };
+      }
+
+      const nBlocks = ns / bs;
+      const excess = ns - minN;
+      const minValid = Math.ceil(minN / bs) * bs;
+
+      if (ns <= minValid + bs && bs >= ntv * 2 && bs <= INCUBATOR_MAX) return {
+        level: "great",
+        msg: `Solid design. Block size ${bs} fits within staining batch capacity (${INCUBATOR_MIN}–${INCUBATOR_MAX}), gives each condition ${bs / ntv} slide${bs / ntv > 1 ? "s" : ""} per batch, and total N of ${ns} meets the power analysis minimum with ${excess === 0 ? "no" : "minimal"} excess — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""} total. ✓`,
+      };
+      if (bs === ntv) return {
+        level: "good",
+        msg: `Block size ${bs} is valid but equals the number of conditions — the smallest possible block. With only one slide per condition per batch, the assignment sequence becomes predictable. A larger block size (try ${ntv * 2}) would reduce that risk while staying within batch capacity.`,
+      };
+      if (excess > bs) return {
+        level: "good",
+        msg: `Total N of ${ns} is valid but ${excess} slides above the power analysis minimum of ${minN}. With block size ${bs}, you could use ${minValid} slides (${minValid / bs} staining batch${minValid / bs > 1 ? "es" : ""}) and still meet the minimum — unnecessary samples have ethical and resource costs.`,
+      };
+      return {
+        level: "good",
+        msg: `Block size ${bs} and total N ${ns} form a valid combination — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""}, each with ${bs / ntv} slide${bs / ntv > 1 ? "s" : ""} per condition. This works; a block size of ${Math.min(ntv * 2, INCUBATOR_MAX)} would give slightly better balance between predictability and efficiency.`,
+      };
+    }
+
+    // ─── Screen 1 ────────────────────────────────────────────────────────────────
+
+    function Screen1({ onNext }) {
+      const [beat, setBeat] = useState(1);
+      const [mcqAnswer, setMcqAnswer] = useState("");
+      const [submitted, setSubmitted] = useState(false);
+      const [feedback, setFeedback] = useState(null);
+
+      const mcqOptions = [
+        { value: "litter", label: "Litter — each litter forms its own block; conditions are assigned randomly within each litter", reason: "littermates share genetics, prenatal environment, and early housing conditions" },
+        { value: "weight", label: "Body weight — construct bins for ranges of body weight; each weight range becomes its own block", reason: "heavier mice may metabolize the compound differently and show different baseline activity levels" },
+        { value: "day",    label: "Testing day — assign one block per testing day; conditions are balanced within each day's session", reason: "different handlers are scheduled across days, and handler identity can influence rodent behavior" },
+        { value: "sex",    label: "Sex — male and female mice each form their own block; conditions are balanced within each sex", reason: "male and female mice may differ in baseline anxiety levels and hormonal responses to the compound" },
+      ];
+
+      const feedbackMap = {
+        litter: { type: "success", msg: "Correct. Littermates share genetics, prenatal environment, and early housing — correlated sources of variation that could skew results if unevenly distributed across conditions. Your colleague updates their design: the 24 mice come from 6 litters of 4, and each litter forms its own block. Conditions are randomized within each litter, and one litter is tested per day. The imbalance problem is solved." },
+        weight: { type: "error",   msg: "Body weight is continuous, not a natural grouping factor. It can enter analysis as a covariate, but blocking requires discrete groups of animals that can be assigned together." },
+        day:    { type: "error",   msg: "Testing day is the source of performance differences we want to neutralize — not the factor we block by. Blocking by litter is what ensures those day-to-day shifts hit both conditions equally." },
+        sex:    { type: "error",   msg: "Sex is controlled by design here — the study uses same-sex mice. Think about a biological factor that still varies within this group." },
+      };
+
+      const handleSubmit = () => { setSubmitted(true); setFeedback(feedbackMap[mcqAnswer]); };
+      const canNext = submitted && mcqAnswer === "litter";
+
+      return (
+        <div>
+          <ProgressBar current={1} total={3} />
+          <Study1Card />
+          <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, marginBottom: "16px" }}>
+            Your colleague plans to use <strong>simple randomization</strong> to assign mice to conditions. Review their plan.
+          </p>
+          {beat === 1 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+              <StyledButton onClick={() => setBeat(2)}>Continue →</StyledButton>
+            </div>
+          )}
+
+          {beat >= 2 && (
+            <>
+              <InstructionCard borderColor={C.warnBorder} bg={C.warnBg}>
+                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#7B4F00", marginBottom: "8px" }}>⚠ You notice a potential problem</div>
+                <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 10px 0" }}>
+                  By chance, most Treatment mice ended up in <strong>Days 3 and 4</strong>. The study uses two handlers — Handler 1 covers Days 1–2, Handler 2 covers Days 3–4 — and handler identity can influence rodent behavior through differences in handling technique, scent, and approach.
+                </p>
+                <TestingDiagram />
+              </InstructionCard>
+              {beat === 2 && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+                  <StyledButton onClick={() => setBeat(3)}>Continue →</StyledButton>
+                </div>
+              )}
+            </>
+          )}
+
+          {beat >= 3 && (
+            <>
+              <InstructionCard title="You suggest block randomization" borderColor={C.blue}>
+                <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 10px 0", lineHeight: 1.6 }}>
+                  In block randomization, animals are grouped into blocks based on a shared characteristic, with conditions randomly assigned within each block. Running one complete block per day means both Treatment and Control mice are tested on every day — so performance shifts from different handlers affect both conditions equally and cannot favor one group.
+                </p>
+                <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
+                  The first step is choosing what characteristic to define the blocks by.
+                </p>
+              </InstructionCard>
+              <div style={{ fontSize: "1rem", fontWeight: 700, color: C.black, marginBottom: "12px" }}>
+                What should your colleague block by?
+              </div>
+              {mcqOptions.map(opt => (
+                <MCQOption key={opt.value} label={opt.label} reason={opt.reason} selected={mcqAnswer === opt.value}
+                  onClick={() => { setMcqAnswer(opt.value); setSubmitted(false); setFeedback(null); }}
+                  disabled={submitted && mcqAnswer === "litter"} />
+              ))}
+              {feedback && <AlertBox type={feedback.type}>{feedback.msg}</AlertBox>}
+              {!(submitted && mcqAnswer === "litter") && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+                  <StyledButton disabled={!mcqAnswer} onClick={handleSubmit}>SUBMIT</StyledButton>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TODO: Replace with NavigationFooterV2 */}
+          <NavBar onPrev={() => {}} onNext={onNext} canPrev={false} canNext={canNext}
+            nextDisabledMsg="Submit a correct answer to continue" />
+        </div>
+      );
+    }
+
+    // ─── Parameter screen (Screen 2) ─────────────────────────────────────────────
+
+    function ParameterScreen({ onNext, onPrev, onParamsChange }) {
+      const [n,         setN]         = useState("");
+      const [blockSize, setBlockSize] = useState("");
+      const [nt,        setNt]        = useState("2");
+      const [generated, setGenerated] = useState(false);
+      const [submitted, setSubmitted] = useState(false);
+      const [feedback,  setFeedback]  = useState(null);
+
+      const fb = blockSize && n && nt ? getStudy2Feedback(blockSize, nt, n, MIN_N) : null;
+      const canGenerate = !!(n && nt && blockSize && parseInt(blockSize) > 0 && parseInt(n) > 0 && parseInt(nt) > 0);
+      const canNext = submitted && fb && fb.level !== "wrong";
+
+      const resetOutput = () => { setGenerated(false); setSubmitted(false); setFeedback(null); };
+
+      const handleSubmit = () => {
+        if (!fb) return;
+        setSubmitted(true);
+        setFeedback(fb);
+        if (onParamsChange) onParamsChange({ n, blockSize, nt });
+      };
+
+      const inputStyle = {
+        padding: "10px 14px", fontSize: "1rem", borderRadius: "8px",
+        border: `2px solid ${C.intLightGray}`, outline: "none", width: "100px",
+        color: C.black, fontWeight: 500,
+      };
+
+      return (
+        <div>
+          <ProgressBar current={2} total={3} />
+          <Study2Card showParams={false} prevParams={null} />
+
+          <div style={{ background: C.white, borderRadius: "10px", border: `1px solid ${C.intLightGray}`,
+            padding: "16px", marginBottom: "16px" }}>
+            <div style={{ fontSize: "1rem", fontWeight: 700, color: C.black, marginBottom: "12px" }}>Set Parameters</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Number of conditions</label>
+                <input type="number" min={2} max={6} value={nt}
+                  onChange={e => { setNt(e.target.value); resetOutput(); }}
+                  style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Block size</label>
+                <input type="number" min={1} value={blockSize} placeholder="e.g. 6"
+                  onChange={e => { setBlockSize(e.target.value); resetOutput(); }}
+                  style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Total N</label>
+                <input type="number" min={1} value={n} placeholder="e.g. 24"
+                  onChange={e => { setN(e.target.value); resetOutput(); }}
+                  style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+              <StyledButton disabled={!canGenerate} onClick={() => { if (canGenerate) setGenerated(true); }}>Generate Sequence</StyledButton>
+            </div>
+          </div>
+
+          {generated && (
+            <div style={{ marginBottom: "16px" }}>
+              <BlockSequenceViz n={parseInt(n)} blockSize={parseInt(blockSize)} nTreatments={parseInt(nt)} />
+            </div>
+          )}
+
+          {feedback && (
+            <AlertBox type={feedback.level === "great" ? "success" : feedback.level === "good" ? "warning" : "error"}>
+              <strong>{feedback.level === "great" ? "Great choices!" : feedback.level === "good" ? "Valid — but consider this:" : "Invalid parameters"}</strong>
+              {" "}{feedback.msg}
+            </AlertBox>
+          )}
+
+          {generated && !canNext && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+              <StyledButton disabled={!fb} onClick={handleSubmit}>SUBMIT</StyledButton>
+            </div>
+          )}
+
+          {/* TODO: Replace with NavigationFooterV2 */}
+          <NavBar onPrev={onPrev} onNext={onNext} canPrev={true} canNext={canNext}
+            nextDisabledMsg="Generate a sequence and submit valid parameters to continue" />
+        </div>
+      );
+    }
+
+    // ─── Screen 3 ────────────────────────────────────────────────────────────────
+
+    function Screen3({ onNext, onPrev, prevParams }) {
+      const [decision,          setDecision]          = useState(null);
+      const [decisionSubmitted, setDecisionSubmitted] = useState(false);
+      const [decisionFeedback,  setDecisionFeedback]  = useState(null);
+      const [showParams,        setShowParams]        = useState(false);
+
+      const [n,              setN]              = useState("");
+      const [blockSize,      setBlockSize]      = useState("");
+      const [nt,             setNt]             = useState("3");
+      const [generated,      setGenerated]      = useState(false);
+      const [paramSubmitted, setParamSubmitted] = useState(false);
+      const [paramFeedback,  setParamFeedback]  = useState(null);
+
+      const prevBs = parseInt(prevParams && prevParams.blockSize);
+      const stillValid = prevBs && (prevBs % 3 === 0);
+
+      const handleDecisionSubmit = () => {
+        setDecisionSubmitted(true);
+        if (decision === "no") {
+          setDecisionFeedback({
+            type: "error",
+            msg: stillValid
+              ? `Block size ${prevBs} happens to be a multiple of 3, but that doesn't mean your previous total N still works. With 3 conditions the power analysis minimum is now 10 samples per treatment arm — your previous total N may no longer be sufficient, and it still needs to be a clean multiple of your block size. Both parameters need review.`
+              : `Block size ${prevBs} is not a multiple of 3. With 3 conditions, every staining batch must contain equal numbers of each group — a batch of ${prevBs} can't divide evenly among 3. You'll need a new block size (between 6–12 and divisible by 3) and a recalculated total N against the new minimum of 10 samples per arm.`,
+          });
+          setShowParams(true);
+        } else {
+          setDecisionFeedback({
+            type: "success",
+            msg: `Correct. Adding a third condition tightens the divisibility constraint: block size must now be a multiple of 3 and still fit within staining batch capacity (6–12 slides). The power analysis minimum of 10 samples per treatment arm also now applies to three arms — total N must meet that new floor and still be a clean multiple of your new block size.`,
+          });
+          setShowParams(true);
+        }
+      };
+
+      const inputStyle = {
+        padding: "10px 14px", fontSize: "1rem", borderRadius: "8px",
+        border: `2px solid ${C.intLightGray}`, outline: "none", width: "100px",
+        color: C.black, fontWeight: 500,
+      };
+
+      const resetOutput = () => { setGenerated(false); setParamSubmitted(false); setParamFeedback(null); };
+      const fb = blockSize && n && nt ? getStudy2Feedback(blockSize, nt, n, 30) : null;
+      const canGenerate = !!(n && nt && blockSize && parseInt(blockSize) > 0 && parseInt(n) > 0 && parseInt(nt) > 0);
+      const canNext = paramSubmitted && fb && fb.level !== "wrong";
+
+      return (
+        <div>
+          <ProgressBar current={3} total={3} />
+
+          <InstructionCard title="New development" borderColor={C.warnBorder} bg={C.warnBg}>
+            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0 }}>
+              The colleague's PI has requested a <strong>saline control group</strong> be added to the IHC study. The study now has <strong>3 conditions</strong>. The power analysis minimum of 10 samples per treatment arm still applies.
+            </p>
+          </InstructionCard>
+
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: C.black, marginBottom: "12px" }}>
+            Do you need to change the block randomization parameters?
+          </div>
+          {[
+            { value: "yes", label: "Yes — adding a condition changes the constraints on both block size and total N" },
+            { value: "no",  label: "No — the same parameters will work fine" },
+          ].map(function(opt) {
+            return (
+              <MCQOption key={opt.value} label={opt.label} selected={decision === opt.value}
+                onClick={() => { if (decisionSubmitted) return; setDecision(opt.value); }}
+                disabled={decisionSubmitted} />
+            );
+          })}
+
+          {!decisionSubmitted && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+              <StyledButton disabled={!decision} onClick={handleDecisionSubmit}>SUBMIT</StyledButton>
+            </div>
+          )}
+
+          {decisionFeedback && <AlertBox type={decisionFeedback.type}>{decisionFeedback.msg}</AlertBox>}
+
+          {showParams && (
+            <div>
+              <div style={{ background: C.white, borderRadius: "10px", border: `1px solid ${C.intLightGray}`,
+                padding: "16px", marginBottom: "16px", marginTop: "8px" }}>
+                <div style={{ fontSize: "1rem", fontWeight: 700, color: C.black, marginBottom: "12px" }}>Set Parameters</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Number of conditions</label>
+                    <input type="number" min={2} max={6} value={nt}
+                      onChange={e => { setNt(e.target.value); resetOutput(); }}
+                      style={inputStyle} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Block size</label>
+                    <input type="number" min={1} value={blockSize} placeholder="e.g. 6"
+                      onChange={e => { setBlockSize(e.target.value); resetOutput(); }}
+                      style={inputStyle} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <label style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, minWidth: "160px" }}>Total N</label>
+                    <input type="number" min={1} value={n} placeholder="e.g. 30"
+                      onChange={e => { setN(e.target.value); resetOutput(); }}
+                      style={inputStyle} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+                  <StyledButton disabled={!canGenerate} onClick={() => { if (canGenerate) setGenerated(true); }}>Generate Sequence</StyledButton>
+                </div>
+              </div>
+
+              {generated && (
+                <div style={{ marginBottom: "16px" }}>
+                  <BlockSequenceViz n={parseInt(n)} blockSize={parseInt(blockSize)} nTreatments={parseInt(nt)} />
+                </div>
+              )}
+
+              {paramFeedback && (
+                <AlertBox type={paramFeedback.level === "great" ? "success" : paramFeedback.level === "good" ? "warning" : "error"}>
+                  <strong>{paramFeedback.level === "great" ? "Great choices!" : paramFeedback.level === "good" ? "Valid — but consider this:" : "Invalid parameters"}</strong>
+                  {" "}{paramFeedback.msg}
+                </AlertBox>
+              )}
+
+              {generated && !canNext && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+                  <StyledButton disabled={!fb} onClick={() => {
+                    if (!fb) return;
+                    setParamSubmitted(true);
+                    setParamFeedback(fb);
+                  }}>SUBMIT</StyledButton>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TODO: Replace with NavigationFooterV2 */}
+          <NavBar onPrev={onPrev} onNext={onNext} canPrev={true} canNext={canNext}
+            nextDisabledMsg="Generate a sequence and submit valid parameters to continue" />
+        </div>
+      );
+    }
+
+    // ─── Congrats ─────────────────────────────────────────────────────────────────
+
+    function CongratsScreen({ onPrev }) {
+      return (
+        <div style={{ textAlign: "center", paddingTop: "48px", paddingBottom: "120px" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🎉</div>
+          <div style={{ fontSize: "1.4rem", fontWeight: 700, color: C.black, marginBottom: "16px" }}>Activity Complete!</div>
+          <div style={{ maxWidth: "560px", margin: "0 auto", fontSize: "1rem", fontWeight: 500,
+            color: C.darkGray, lineHeight: 1.7, textAlign: "left" }}>
+            <p style={{ marginBottom: "12px" }}>You identified a temporal imbalance in a colleague's elevated plus maze design, recommended block randomization, and chose the right blocking factor — litter — so that genetic and environmental variation within litters couldn't favor one condition.</p>
+            <p>You then helped design an IHC study from scratch: choosing a block size that balances predictability against efficiency, and a total N that meets the power analysis minimum while being a clean multiple of your block size. Finally, you saw that adding a condition forces you to revisit both constraints simultaneously.</p>
+          </div>
+          {/* TODO: Replace with NavigationFooterV2 */}
+          <NavBar onPrev={onPrev} onNext={() => {}} canPrev={true} canNext={false} nextDisabledMsg="" />
+        </div>
+      );
+    }
+
+    // ─── Root ─────────────────────────────────────────────────────────────────────
+
+    function App() {
+      const [screen, setScreen] = useState(1);
+      const [screen2Params, setScreen2Params] = useState(null);
+
+      return (
+        <div style={{ background: "#F3F3F3", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px 120px" }}>
+            {screen === 1 && <Screen1 onNext={() => setScreen(2)} />}
+            {screen === 2 && (
+              <ParameterScreen onNext={() => setScreen(3)} onPrev={() => setScreen(1)}
+                onParamsChange={p => setScreen2Params(p)} />
+            )}
+            {screen === 3 && (
+              <Screen3 onNext={() => setScreen(4)} onPrev={() => setScreen(2)} prevParams={screen2Params} />
+            )}
+            {screen === 4 && <CongratsScreen onPrev={() => setScreen(3)} />}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
