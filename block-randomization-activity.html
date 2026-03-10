@@ -116,14 +116,14 @@
     }
 
     // TODO: Replace with NavigationFooterV2 component
-    function NavBar({ onPrev, onNext, canPrev, canNext, nextLabel = "NEXT", nextDisabledMsg = "Complete this step to continue" }) {
+    function NavBar({ onPrev, onNext, canPrev, canNext, nextLabel = "Next", nextDisabledMsg = "Complete this step to continue" }) {
       const [tip, setTip] = useState(false);
       return (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.white,
           borderTop: `1px solid ${C.intLightGray}`, boxShadow: "0 -2px 10px rgba(0,0,0,0.1)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
           padding: "14px 32px", zIndex: 1000 }}>
-          {canPrev ? <StyledButton variant="secondary" onClick={onPrev}>PREVIOUS</StyledButton> : <div />}
+          {canPrev ? <StyledButton variant="secondary" onClick={onPrev}>Previous</StyledButton> : <div />}
           <div style={{ position: "relative" }}
             onMouseEnter={() => !canNext && setTip(true)} onMouseLeave={() => setTip(false)}>
             {tip && !canNext && (
@@ -163,24 +163,16 @@
       );
     }
 
-    function Study1Card() {
-      return (
-        <PlainCard title="Study Overview">
-          <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-            A colleague is testing whether a novel compound reduces anxiety-like behavior in mice using the <strong>elevated plus maze</strong>. The study includes <strong>24 same-sex mice</strong> assigned to two conditions — Treatment and Control — tested at a rate of <strong>6 mice per day</strong> over <strong>4 days</strong>.
-          </p>
-        </PlainCard>
-      );
-    }
+
 
     function Study2Card({ showParams = false, prevParams = null }) {
       return (
         <PlainCard title="New Study Overview">
           <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 10px 0", lineHeight: 1.6 }}>
-            The same colleague is now designing an immunohistochemistry study to quantify protein expression across treatment conditions. Tissue samples are stained in batches — each batch is processed together with a freshly prepared antibody dilution.
+            A colleague is designing an immunohistochemistry study comparing protein expression between treatment conditions. Tissue samples are stained in batches; each batch is processed together with a freshly prepared antibody dilution.
           </p>
           <AlertBox type="warning">
-            Between-batch variation is common: pipetting variability when preparing antibody dilutions, slight drift in incubation or development times, and operator fatigue across sequential runs can all affect staining intensity and background signal independent of treatment.
+            Between-batch variation is common. Sources include: pipetting variability when preparing antibody dilutions, slight drift in incubation or development times, and operator fatigue across sequential runs. These factors can affect staining intensity and background signal.
           </AlertBox>
           {showParams && prevParams && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
@@ -203,99 +195,67 @@
       );
     }
 
-    // ─── Testing diagram ─────────────────────────────────────────────────────────
+    // ─── IHC Parameter screen (Screen 1) ─────────────────────────────────────────
 
-    function TestingDiagram() {
-      const data = [
-        ["C","C","C","T","C","C"],
-        ["C","T","C","C","T","C"],
-        ["T","T","C","T","T","C"],
-        ["T","T","T","C","T","C"],
-      ];
-      const tColor = "#6F00FF", cColor = "#0082FF";
-      const dayLabels = ["Day 1","Day 2","Day 3","Day 4"];
-      const handlerLevel = ["Handler 1","Handler 1","Handler 2","Handler 2"];
-
-      return (
-        <div>
-          <div style={{ background: C.white, borderRadius: "10px", padding: "16px", border: `1px solid ${C.intLightGray}` }}>
-            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.darkGray, marginBottom: "12px",
-              textTransform: "uppercase", letterSpacing: "0.05em" }}>Colleague's Assignment (Simple Randomization)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 32px 32px 110px", alignItems: "center", gap: "6px 10px" }}>
-              <div /><div />
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: tColor, textAlign: "center" }}>T</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: cColor, textAlign: "center" }}>C</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: C.midGray }}>Handler</div>
-              {data.map((day, di) => {
-                const nT = day.filter(x => x === "T").length;
-                const nC = day.filter(x => x === "C").length;
-                return [
-                  <div key={`lbl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 600, color: C.darkGray }}>{dayLabels[di]}</div>,
-                  <div key={`sq-${di}`} style={{ display: "flex", gap: "5px" }}>
-                    {day.map((a, mi) => (
-                      <div key={mi} style={{ width: "32px", height: "32px", borderRadius: "6px", flexShrink: 0,
-                        background: a === "T" ? tColor : cColor, display: "flex", alignItems: "center",
-                        justifyContent: "center", color: C.white, fontSize: "0.75rem", fontWeight: 700 }}>{a}</div>
-                    ))}
-                  </div>,
-                  <div key={`nt-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: tColor, textAlign: "center" }}>{nT}</div>,
-                  <div key={`nc-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: cColor, textAlign: "center" }}>{nC}</div>,
-                  <div key={`hl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 500, color: C.darkGray }}>{handlerLevel[di]}</div>,
-                ];
-              })}
-            </div>
-            <div style={{ display: "flex", gap: "16px", marginTop: "12px", paddingTop: "10px", borderTop: `1px solid ${C.intLightGray}` }}>
-              {[["Treatment (T)", tColor], ["Control (C)", cColor]].map(([label, color]) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: color }} />
-                  <span style={{ fontSize: "0.8rem", color: C.darkGray, fontWeight: 500 }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginTop: "10px" }}>
-            <AlertBox type="info">
-              <strong>Note on handler identity:</strong> Rodents respond differently to different handlers — variations in technique, scent, and approach can alter stress responses and influence maze performance independent of any compound effect.
-            </AlertBox>
-          </div>
-          <AlertBox type="warning">
-            <strong>The problem:</strong> Simple randomization produced an <strong>imbalance</strong> — most Treatment mice are tested in Days 3–4, when a different handler is working. Consequently, some of the difference in performance between the treatment and control mice could be due to differences in handling, rather than the treatment assignment.
-          </AlertBox>
-        </div>
-      );
-    }
+    const BTN_W = "160px"; // uniform button width across all action buttons
+    const BTN_COL_W = 160; // must match BTN_W (px number for layout arithmetic)
 
     // ─── Animated block sequence visualizer ─────────────────────────────────────
 
-    const BTN_COL_W = 168; // fixed px width reserved for action button column
-
-    function BlockSequenceVizInner({ n, blockSize, nTreatments }) {
+    function BlockSequenceVizInner({ n, blockSize, nTreatments, onShuffled }) {
       const colors  = ["#6F00FF","#0082FF","#00A86B"];
       const abbrevs = nTreatments === 2 ? ["T","C"] : ["T","C","S"];
       const labels  = nTreatments === 2 ? ["Treatment","Control"] : ["Treatment","Control","Saline"];
       const TILE = 30, GAP = 4, BLOCK_PAD = 8, BLOCK_GAP = 10;
 
       // ── Block layouts ─────────────────────────────────────────────────────────
-      // shuffledBlocks: final randomized order per block (used after shuffle)
-      const shuffledBlocks = useMemo(() => {
-        if (!n || !blockSize || !nTreatments) return [];
+      // Distribute N as evenly as possible across conditions: first (N % nt) conditions
+      // get floor(N/nt)+1 samples, the rest get floor(N/nt).
+      // Fill blocks greedily: each full block gets floor(blockSize/nt) per condition,
+      // with extra slots going to conditions that still have samples remaining.
+      // Remainder block takes whatever is left.
+      const shuffledData = useMemo(() => {
+        if (!n || !blockSize || !nTreatments) return { blocks: [], perms: [] };
+
+        const base = Math.floor(n / nTreatments);
+        const extra = n % nTreatments;
+        const condTotals = Array.from({ length: nTreatments }, (_, i) => base + (i < extra ? 1 : 0));
+        const remaining = [...condTotals];
         const result = [];
-        let remaining = n, blockNum = 0;
-        while (remaining > 0) {
-          const size = Math.min(blockSize, remaining);
-          const block = [];
-          for (let i = 0; i < size; i++) block.push(i % nTreatments);
-          // TODO: DEV — Replace with seeded PRNG
-          for (let i = block.length - 1; i > 0; i--) {
-            const j = Math.floor((blockNum * 37 + i * 13 + 7) % (i + 1));
-            [block[i], block[j]] = [block[j], block[i]];
+
+        const perms = [];
+        while (remaining.some(r => r > 0)) {
+          const left = remaining.reduce((a, b) => a + b, 0);
+          const size = Math.min(blockSize, left);
+          const alloc = Array(nTreatments).fill(Math.floor(size / nTreatments));
+          let extraSlots = size % nTreatments;
+          const order = Array.from({ length: nTreatments }, (_, i) => i)
+            .sort((a, b) => remaining[b] - remaining[a]);
+          for (let i = 0; i < extraSlots; i++) alloc[order[i]]++;
+          for (let c = 0; c < nTreatments; c++) alloc[c] = Math.min(alloc[c], remaining[c]);
+
+          // Build balanced block (sorted by condition), then apply a random permutation
+          // of indices [0..size-1] so every arrangement is equally likely.
+          // TODO: DEV — Replace Math.random() with seeded PRNG for reproducibility
+          const balanced = [];
+          for (let c = 0; c < nTreatments; c++) for (let j = 0; j < alloc[c]; j++) balanced.push(c);
+
+          const perm = Array.from({ length: balanced.length }, (_, i) => i);
+          for (let i = perm.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [perm[i], perm[j]] = [perm[j], perm[i]];
           }
-          result.push(block);
-          remaining -= size;
-          blockNum++;
+          // perm[newSlot] = oldSlot: slot newSlot gets the tile that was at oldSlot
+          perms.push(perm);
+          result.push(perm.map(oldSlot => balanced[oldSlot]));
+
+          for (let c = 0; c < nTreatments; c++) remaining[c] -= alloc[c];
         }
-        return result;
+        return { blocks: result, perms };
       }, [n, blockSize, nTreatments]);
+
+      const shuffledBlocks = shuffledData.blocks;
+      const shufflePerms   = shuffledData.perms;
 
       // balancedBlocks: conditions grouped (0,0,...,1,1,...) — fill target
       const balancedBlocks = useMemo(() =>
@@ -314,9 +274,11 @@
         return tiles;
       }, [balancedBlocks, nTreatments]);
 
-      // block zone height
-      const blockH     = TILE + 2 * BLOCK_PAD + 4;
-      const blockZoneH = blockH * 2 + BLOCK_GAP;
+      // Block width: each row holds ceil(blockSize/nTreatments) tiles — one full condition round.
+      // Used by tilePos() and block rendering.
+      const tilesPerRow = Math.ceil(blockSize / nTreatments);
+      const blockInnerW = tilesPerRow * TILE + (tilesPerRow - 1) * GAP;
+      const blockOuterW = blockInnerW + 2 * BLOCK_PAD + 4; // +4 for 2px border each side
 
       // ── phases: revealing | ready | filling | filled | shuffling | done ──────
       const [phase, setPhase]               = useState('revealing');
@@ -328,13 +290,21 @@
 
       const flatRefsMap     = useRef({}); // idx → flat tile DOM el
       const balancedRefsMap = useRef({}); // `${bi}-${pi}` → balanced slot DOM el
-      const shuffledRefsMap = useRef({}); // `${bi}-${pi}` → shuffled slot DOM el
+      // No shuffledRefsMap needed — shuffle offsets computed from tilePos() directly
 
-      // Phase 1: reveal tiles one by one over ~2s
+      // Pure function: linear slot index → {x, y} pixel offset within a block's tile area
+      // (origin = top-left of first tile, i.e. inside the block padding)
+      const tilePos = useCallback((pi) => {
+        const col = pi % tilesPerRow;
+        const row = Math.floor(pi / tilesPerRow);
+        return { x: col * (TILE + GAP), y: row * (TILE + GAP) };
+      }, [tilesPerRow]);
+
+      // Phase 1: reveal tiles one by one over ~1.5s
       useEffect(() => {
         if (phase !== 'revealing') return;
         if (visibleCount >= flatTiles.length) { setPhase('ready'); return; }
-        const interval = Math.min(2000 / flatTiles.length, 120);
+        const interval = Math.min(1500 / flatTiles.length, 120);
         const t = setTimeout(() => setVisibleCount(c => c + 1), interval);
         return () => clearTimeout(t);
       }, [phase, visibleCount, flatTiles.length]);
@@ -366,7 +336,6 @@
 
         waves.forEach((wave, wi) => {
           const delay = wi * (WAVE_DURATION + WAVE_GAP);
-          // After delay, apply transforms for this wave
           setTimeout(() => {
             setTileOffsets(prev => {
               const next = { ...prev };
@@ -380,39 +349,36 @@
           }, delay);
         });
 
-        // After all waves complete, transition to filled
         const totalDuration = (nTreatments - 1) * (WAVE_DURATION + WAVE_GAP) + WAVE_DURATION + 100;
         setTimeout(() => setPhase('filled'), totalDuration);
       }, [phase, flatTiles, balancedBlocks, nTreatments]);
 
-      // Zero out Y component of shuffle offsets — tiles only move horizontally
+      // "Shuffle within blocks": pure coordinate mapping using stored permutations.
+      // perm[newSlot] = oldSlot, so invPerm[oldSlot] = newSlot.
+      // The tile at balanced slot balPi moves to invPerm[balPi] in the shuffled layout.
       const startShuffle = useCallback(() => {
         if (phase !== 'filled') return;
         setPhase('shuffling');
 
         const offsets = {};
         balancedBlocks.forEach((balBlock, bi) => {
-          const shuffledBlock = shuffledBlocks[bi];
-          const usedShuffled = new Set();
-          balBlock.forEach((cond, balPi) => {
-            const shuffPi = shuffledBlock.findIndex((c, i) => c === cond && !usedShuffled.has(i));
-            if (shuffPi === -1) return;
-            usedShuffled.add(shuffPi);
-            const balEl   = balancedRefsMap.current[`${bi}-${balPi}`];
-            const shuffEl = shuffledRefsMap.current[`${bi}-${shuffPi}`];
-            if (balEl && shuffEl) {
-              const br = balEl.getBoundingClientRect();
-              const sr = shuffEl.getBoundingClientRect();
-              offsets[`${bi}-${balPi}`] = { x: sr.left - br.left, y: 0 }; // horizontal only
-            }
+          const perm = shufflePerms[bi];
+          const invPerm = new Array(perm.length);
+          perm.forEach((oldSlot, newSlot) => { invPerm[oldSlot] = newSlot; });
+
+          balBlock.forEach((_, balPi) => {
+            const shuffPi = invPerm[balPi];
+            const from = tilePos(balPi);
+            const to   = tilePos(shuffPi);
+            offsets[`${bi}-${balPi}`] = { x: to.x - from.x, y: to.y - from.y };
           });
         });
 
         requestAnimationFrame(() => requestAnimationFrame(() => {
           setSlotOffsets(offsets);
-          setTimeout(() => setPhase('done'), 520);
+          setTimeout(() => { setPhase('done'); if (onShuffled) onShuffled(); }, 520);
         }));
-      }, [phase, balancedBlocks, shuffledBlocks]);
+      }, [phase, balancedBlocks, shufflePerms, tilePos]);
 
       if (!shuffledBlocks.length) return null;
 
@@ -424,7 +390,7 @@
           border: `1px solid ${C.intLightGray}`, marginTop: "16px" }}>
 
           {/* ── Flat zone: left=tiles, right="Group into blocks" button ── */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "20px" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {showFlat && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: `${GAP}px` }}>
@@ -453,24 +419,25 @@
             <div style={{ width: `${BTN_COL_W}px`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
               <StyledButton variant="secondary" onClick={startFilling}
                 disabled={phase !== 'ready'}
-                style={{ fontSize: "0.85rem", padding: "6px 14px" }}>
-                Group into blocks
+                style={{ fontSize: "0.85rem", padding: "6px 14px", width: BTN_W }}>
+                Group Into Blocks
               </StyledButton>
             </div>
           </div>
 
           {/* ── Block zone: left=blocks, right="Shuffle within blocks" button ── */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: `${BLOCK_GAP}px` }}>
                 {balancedBlocks.map((balBlock, bi) => (
                   <div key={bi} style={{
                     border: `2px solid ${C.intLightGray}`, borderRadius: "8px",
                     padding: `${BLOCK_PAD}px`,
+                    width: `${blockOuterW}px`,
                     background: showBalanced ? C.lightGray : C.white,
                     transition: "background 0.2s ease",
                   }}>
-                    <div style={{ display: "flex", gap: `${GAP}px` }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: `${GAP}px` }}>
                       {balBlock.map((cond, pi) => {
                         const so = slotOffsets[`${bi}-${pi}`];
                         return (
@@ -496,28 +463,13 @@
                 ))}
               </div>
 
-              {/* Hidden shuffled layout for measurement — rendered in same flex context as blocks */}
-              <div style={{ visibility: "hidden", height: 0, overflow: "hidden",
-                display: "flex", flexWrap: "wrap", gap: `${BLOCK_GAP}px` }}>
-                {shuffledBlocks.map((block, bi) => (
-                  <div key={bi} style={{ border: `2px solid ${C.intLightGray}`, borderRadius: "8px",
-                    padding: `${BLOCK_PAD}px` }}>
-                    <div style={{ display: "flex", gap: `${GAP}px` }}>
-                      {block.map((cond, pi) => (
-                        <div key={pi} ref={el => { shuffledRefsMap.current[`${bi}-${pi}`] = el; }}
-                          style={{ width: `${TILE}px`, height: `${TILE}px`, borderRadius: "5px" }} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div style={{ width: `${BTN_COL_W}px`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
               <StyledButton variant="secondary" onClick={startShuffle}
                 disabled={phase !== 'filled'}
-                style={{ fontSize: "0.85rem", padding: "6px 14px" }}>
-                Shuffle within blocks
+                style={{ fontSize: "0.85rem", padding: "6px 14px", width: BTN_W }}>
+                Shuffle Within Blocks
               </StyledButton>
             </div>
           </div>
@@ -537,9 +489,20 @@
     }
 
     // Wrapper: incrementing runKey remounts inner component, restarting animation
-    function BlockSequenceViz({ n, blockSize, nTreatments, runKey }) {
-      if (!n || !blockSize || !nTreatments) return null;
-      return <BlockSequenceVizInner key={runKey} n={n} blockSize={blockSize} nTreatments={nTreatments} />;
+    function BlockSequenceViz({ n, blockSize, nTreatments, runKey, onShuffled }) {
+      if (!n || !blockSize || !nTreatments || n < 1 || blockSize < 1) {
+        return (
+          <div style={{ background: C.white, borderRadius: "10px", padding: "24px 16px",
+            border: `1px solid ${C.intLightGray}`, marginTop: "0", marginBottom: "16px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            minHeight: "80px" }}>
+            <span style={{ fontSize: "0.9rem", fontWeight: 500, color: C.midGray }}>
+              Enter a block size and total N to see the block structure
+            </span>
+          </div>
+        );
+      }
+      return <BlockSequenceVizInner key={runKey} n={n} blockSize={blockSize} nTreatments={nTreatments} onShuffled={onShuffled} />;
     }
 
     // ─── Study 2 feedback logic ───────────────────────────────────────────────────
@@ -548,414 +511,273 @@
     const INCUBATOR_MIN = 6;
     const INCUBATOR_MAX = 12;
 
-    function getStudy2Feedback(blockSize, nt, n, minN) {
+    function getStudy2Feedback(blockSize, nt, n, minN, greatMaxN) {
       if (minN === undefined) minN = MIN_N;
       const bs = parseInt(blockSize), ntv = parseInt(nt), ns = parseInt(n);
       if (!bs || !ntv || !ns || bs < 1 || ntv < 1 || ns < 1) return null;
 
       if (bs % ntv !== 0) return {
         level: "wrong",
-        msg: `Block size (${bs}) must be a multiple of the number of conditions (${ntv}). Each staining batch needs exactly equal representation of all conditions — a batch of ${bs} can't be divided evenly among ${ntv} groups.`,
+        msg: `Block size (${bs}) must be a multiple of the number of conditions (${ntv}) so each batch contains equal representation of all conditions.`,
       };
       if (bs > INCUBATOR_MAX) return {
         level: "wrong",
-        msg: `Block size ${bs} exceeds the maximum staining batch capacity of ${INCUBATOR_MAX} slides. Each block corresponds to one batch, so block size can't exceed ${INCUBATOR_MAX}.`,
+        msg: `Block size ${bs} exceeds the staining batch capacity — each batch holds a maximum of ${INCUBATOR_MAX} slides.`,
       };
       if (bs < INCUBATOR_MIN) return {
         level: "wrong",
-        msg: `Block size ${bs} is below the minimum staining batch capacity of ${INCUBATOR_MIN} slides. With only ${bs} slides per batch you're leaving substantial capacity unused — a block size between ${INCUBATOR_MIN} and ${INCUBATOR_MAX} makes better use of each staining run.`,
+        msg: `Block size ${bs} is below the minimum batch size of ${INCUBATOR_MIN}. Each batch should have at least ${INCUBATOR_MIN} slides for consistent staining — choose a block size between ${INCUBATOR_MIN} and ${INCUBATOR_MAX}.`,
       };
-      if (ns % bs !== 0) {
-        const roundedUp = Math.ceil(ns / bs) * bs;
-        return {
-          level: "wrong",
-          msg: `Total N (${ns}) must be a multiple of block size (${bs}) so that every staining batch is fully and evenly assigned across conditions. The nearest valid value at or above the power analysis minimum is ${Math.max(roundedUp, Math.ceil(minN / bs) * bs)}.`,
-        };
-      }
       if (ns < minN) {
-        const minValid = Math.ceil(minN / bs) * bs;
         return {
           level: "wrong",
-          msg: `Total N (${ns}) falls short of the power analysis minimum of ${minN}. With block size ${bs}, the smallest valid total N that meets the minimum is ${minValid}.`,
+          msg: `Total N (${ns}) falls short of the minimum of ${minN} samples (${minN / ntv} per condition).`,
         };
       }
 
-      const nBlocks = ns / bs;
+      const nFullBlocks = Math.floor(ns / bs);
+      const remainder = ns % bs;
+      const hasPartial = remainder > 0;
+      const nBlocks = nFullBlocks + (hasPartial ? 1 : 0);
       const excess = ns - minN;
       const minValid = Math.ceil(minN / bs) * bs;
+      const perCondPerBlock = bs / ntv;
+      const partialNote = hasPartial ? ` The last batch has only ${remainder} slides (not a full block of ${bs}).` : "";
 
-      if (ns <= minValid + bs && bs >= ntv * 2 && bs <= INCUBATOR_MAX) return {
+      // "great" ceiling: use greatMaxN if provided, else minValid + bs
+      const greatCeiling = (greatMaxN !== undefined) ? greatMaxN : (minValid + bs);
+
+      if (ns <= greatCeiling && bs >= ntv * 2 && bs <= INCUBATOR_MAX && !hasPartial) return {
         level: "great",
-        msg: `Solid design. Block size ${bs} fits within staining batch capacity (${INCUBATOR_MIN}–${INCUBATOR_MAX}), gives each condition ${bs / ntv} slide${bs / ntv > 1 ? "s" : ""} per batch, and total N of ${ns} meets the power analysis minimum with ${excess === 0 ? "no" : "minimal"} excess — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""} total. ✓`,
+        msg: `Solid design. Block size ${bs} fits within batch capacity (${INCUBATOR_MIN}–${INCUBATOR_MAX}), gives each condition ${perCondPerBlock} slide${perCondPerBlock > 1 ? "s" : ""} per batch, and total N of ${ns} meets the minimum efficiently — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""} total. ✓`,
       };
       if (bs === ntv) return {
         level: "good",
-        msg: `Block size ${bs} is valid but equals the number of conditions — the smallest possible block. With only one slide per condition per batch, the assignment sequence becomes predictable. A larger block size (try ${ntv * 2}) would reduce that risk while staying within batch capacity.`,
+        msg: `Block size ${bs} is valid but equals the number of conditions — the smallest possible block. With only one slide per condition per batch, the assignment sequence becomes predictable. A larger block size (try ${ntv * 2}) would reduce that risk while staying within batch capacity.${partialNote}`,
+      };
+      if (hasPartial) return {
+        level: "good",
+        msg: `Valid combination, but total N (${ns}) isn't a multiple of block size (${bs}), so the last batch will be incomplete.${partialNote} Consider rounding up to ${Math.ceil(ns / bs) * bs} for fully balanced batches.`,
       };
       if (excess > bs) return {
         level: "good",
-        msg: `Total N of ${ns} is valid but ${excess} slides above the power analysis minimum of ${minN}. With block size ${bs}, you could use ${minValid} slides (${minValid / bs} staining batch${minValid / bs > 1 ? "es" : ""}) and still meet the minimum — unnecessary samples have ethical and resource costs.`,
+        msg: `Total N of ${ns} is valid but ${excess} slides above the minimum of ${minN}. With block size ${bs}, you could use ${minValid} slides (${Math.ceil(minValid / bs)} staining batch${Math.ceil(minValid / bs) > 1 ? "es" : ""}) and still meet the minimum — unnecessary samples have ethical and resource costs.`,
       };
       return {
         level: "good",
-        msg: `Block size ${bs} and total N ${ns} form a valid combination — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""}, each with ${bs / ntv} slide${bs / ntv > 1 ? "s" : ""} per condition. This works; a block size of ${Math.min(ntv * 2, INCUBATOR_MAX)} would give slightly better balance between predictability and efficiency.`,
+        msg: `Block size ${bs} and total N ${ns} form a valid combination — ${nBlocks} staining batch${nBlocks > 1 ? "es" : ""}, each with ${perCondPerBlock} slide${perCondPerBlock > 1 ? "s" : ""} per condition.`,
       };
     }
 
-    // ─── Day-blocked diagram (Screen 1 corrected design) ─────────────────────────
+    // ─── Shared param interaction section ────────────────────────────────────────
+    // Used by both case studies. Handles inputs, viz, table, two-attempt gate.
 
-    function DayBlockedDiagram() {
-      const tColor = "#6F00FF", cColor = "#0082FF";
-      const dayLabels = ["Day 1","Day 2","Day 3","Day 4"];
-      const handlerLabels = ["Handler 1","Handler 1","Handler 2","Handler 2"];
-      // 4 days × 6 mice, 3T + 3C per day, shuffled per day
-      const dayData = [0,1,2,3].map(di => {
-        const block = ["T","T","T","C","C","C"];
-        for (let i = block.length - 1; i > 0; i--) {
-          const j = Math.floor((di * 37 + i * 13 + 7) % (i + 1));
-          const tmp = block[i]; block[i] = block[j]; block[j] = tmp;
-        }
-        return block;
-      });
-
+    function ResultsTable({ rows }) {
+      const colStyle = { padding: "8px 12px", fontSize: "0.85rem", fontWeight: 500,
+        color: C.darkGray, borderBottom: `1px solid ${C.intLightGray}`, textAlign: "center" };
+      const headStyle = { ...colStyle, fontWeight: 700, color: C.black,
+        background: C.lightGray, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.04em" };
       return (
-        <div>
-          <div style={{ background: C.white, borderRadius: "10px", padding: "16px", border: `1px solid ${C.intLightGray}` }}>
-            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.darkGray, marginBottom: "12px",
-              textTransform: "uppercase", letterSpacing: "0.05em" }}>Revised Design (Block Randomization by Testing Day)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 32px 32px 110px", alignItems: "center", gap: "6px 10px" }}>
-              <div /><div />
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: tColor, textAlign: "center" }}>T</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: cColor, textAlign: "center" }}>C</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: C.midGray }}>Handler</div>
-              {dayData.map((day, di) => ([
-                <div key={`lbl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 600, color: C.darkGray }}>{dayLabels[di]}</div>,
-                <div key={`sq-${di}`} style={{ display: "flex", gap: "5px" }}>
-                  {day.map((a, mi) => (
-                    <div key={mi} style={{ width: "32px", height: "32px", borderRadius: "6px", flexShrink: 0,
-                      background: a === "T" ? tColor : cColor, display: "flex", alignItems: "center",
-                      justifyContent: "center", color: C.white, fontSize: "0.75rem", fontWeight: 700 }}>{a}</div>
-                  ))}
-                </div>,
-                <div key={`nt-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: tColor, textAlign: "center" }}>3</div>,
-                <div key={`nc-${di}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: cColor, textAlign: "center" }}>3</div>,
-                <div key={`hl-${di}`} style={{ fontSize: "0.8rem", fontWeight: 500, color: C.darkGray }}>{handlerLabels[di]}</div>,
-              ]))}
-            </div>
-            <div style={{ display: "flex", gap: "16px", marginTop: "12px", paddingTop: "10px", borderTop: `1px solid ${C.intLightGray}` }}>
-              {[["Treatment (T)", tColor], ["Control (C)", cColor]].map(([label, color]) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: color }} />
-                  <span style={{ fontSize: "0.8rem", color: C.darkGray, fontWeight: 500 }}>{label}</span>
-                </div>
+        <div style={{ background: C.white, borderRadius: "8px", border: `1px solid ${C.intLightGray}`,
+          overflow: "hidden", marginTop: "12px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Conditions", "Block size", "Total N"].map(h => (
+                  <th key={h} style={headStyle}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? C.white : "#F8F8FF" }}>
+                  <td style={colStyle}>{r.nt}</td>
+                  <td style={colStyle}>{r.blockSize}</td>
+                  <td style={colStyle}>{r.n}</td>
+                </tr>
               ))}
-            </div>
-          </div>
-          <div style={{ marginTop: "8px" }}>
-            <AlertBox type="success">
-              <strong>Handler balance restored:</strong> Both conditions are tested every day, so Handler 1 and Handler 2 each work with an equal mix of Treatment and Control mice.
-            </AlertBox>
-          </div>
+            </tbody>
+          </table>
         </div>
       );
     }
 
-    function LitterDiagram() {
-      const tColor = "#6F00FF", cColor = "#0082FF";
-      const dayLabels = ["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6"];
-      const handlerLabels = ["Handler 1","Handler 1","Handler 1","Handler 2","Handler 2","Handler 2"];
-      // 6 litters of 4, shuffled within-litter using deterministic pseudo-shuffle
-      const litterData = [0,1,2,3,4,5].map(li => {
-        const block = ["T","T","C","C"];
-        for (let i = block.length - 1; i > 0; i--) {
-          const j = Math.floor((li * 37 + i * 13 + 7) % (i + 1));
-          const tmp = block[i]; block[i] = block[j]; block[j] = tmp;
-        }
-        return block;
-      });
-
-      return (
-        <div>
-          <div style={{ background: C.white, borderRadius: "10px", padding: "16px", border: `1px solid ${C.intLightGray}` }}>
-            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.darkGray, marginBottom: "12px",
-              textTransform: "uppercase", letterSpacing: "0.05em" }}>Revised Design (Block Randomization by Litter)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 32px 32px 110px", alignItems: "center", gap: "6px 10px" }}>
-              <div /><div />
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: tColor, textAlign: "center" }}>T</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: cColor, textAlign: "center" }}>C</div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: C.midGray }}>Handler</div>
-              {litterData.map((litter, li) => (
-                [
-                  <div key={`lbl-${li}`} style={{ fontSize: "0.8rem", fontWeight: 600, color: C.darkGray }}>{dayLabels[li]}<br/><span style={{ fontSize: "0.7rem", color: C.midGray, fontWeight: 500 }}>Litter {li+1}</span></div>,
-                  <div key={`sq-${li}`} style={{ display: "flex", gap: "5px" }}>
-                    {litter.map((a, mi) => (
-                      <div key={mi} style={{ width: "32px", height: "32px", borderRadius: "6px", flexShrink: 0,
-                        background: a === "T" ? tColor : cColor, display: "flex", alignItems: "center",
-                        justifyContent: "center", color: C.white, fontSize: "0.75rem", fontWeight: 700 }}>{a}</div>
-                    ))}
-                  </div>,
-                  <div key={`nt-${li}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: tColor, textAlign: "center" }}>2</div>,
-                  <div key={`nc-${li}`} style={{ fontSize: "0.85rem", fontWeight: 700, color: cColor, textAlign: "center" }}>2</div>,
-                  <div key={`hl-${li}`} style={{ fontSize: "0.8rem", fontWeight: 500, color: C.darkGray }}>{handlerLabels[li]}</div>,
-                ]
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: "16px", marginTop: "12px", paddingTop: "10px", borderTop: `1px solid ${C.intLightGray}` }}>
-              {[["Treatment (T)", tColor], ["Control (C)", cColor]].map(([label, color]) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <div style={{ width: "14px", height: "14px", borderRadius: "3px", background: color }} />
-                  <span style={{ fontSize: "0.8rem", color: C.darkGray, fontWeight: 500 }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginTop: "8px", padding: "10px 14px", borderRadius: "8px",
-            background: C.successBg, border: `1px solid ${C.successBorder}`,
-            fontSize: "0.85rem", fontWeight: 500, color: C.successText, lineHeight: 1.5 }}>
-            <strong>Handler balance as a consequence:</strong> Because each litter is tested on its own day and Handler 1 covers Days 1–3 while Handler 2 covers Days 4–6, each handler tests 3 litters — and every litter is perfectly balanced between Treatment and Control. Handler identity can no longer confound the result.
-          </div>
-        </div>
-      );
-    }
-
-    // ─── Screen 1 ────────────────────────────────────────────────────────────────
-
-    function Screen1({ onNext }) {
-      const [beat, setBeat] = useState(1);
-
-      return (
-        <div>
-          <ProgressBar current={1} total={4} />
-          <Study1Card />
-          <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, marginBottom: "16px" }}>
-            Your colleague plans to use <strong>simple randomization</strong> to assign mice to conditions.
-          </p>
-          {beat === 1 && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-              <StyledButton onClick={() => setBeat(2)}>Review their plan →</StyledButton>
-            </div>
-          )}
-
-          {beat >= 2 && (
-            <>
-              <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
-                marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: C.black, marginBottom: "12px" }}>You notice a potential problem</div>
-                <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 12px 0", lineHeight: 1.6 }}>
-                  By chance, most Treatment mice ended up in <strong>Days 3 and 4</strong>. The study uses two handlers — Handler 1 covers Days 1–2, Handler 2 covers Days 3–4.
-                </p>
-                <TestingDiagram />
-              </div>
-              {beat === 2 && (
-                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-                  <StyledButton onClick={() => setBeat(3)}>Suggest Block Randomization</StyledButton>
-                </div>
-              )}
-            </>
-          )}
-
-          {beat >= 3 && (
-            <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
-              marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-              <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: "0 0 12px 0", lineHeight: 1.6 }}>
-                You suggest <strong>blocking by testing day</strong>: each daily session is assigned an equal number of Treatment and Control mice. Now each handler works with a balanced mix of both conditions, and day-to-day performance shifts can no longer favor one group.
-              </p>
-              <DayBlockedDiagram />
-            </div>
-          )}
-
-          {/* TODO: Replace with NavigationFooterV2 */}
-          <NavBar onPrev={() => {}} onNext={onNext} canPrev={false} canNext={beat >= 3}
-            nextDisabledMsg="Continue through the screens to proceed" />
-        </div>
-      );
-    }
-
-    // ─── Screen 2: Biological variation reflection ────────────────────────────────
-
-    function Screen2({ onNext, onPrev }) {
-      const [mcqAnswer, setMcqAnswer] = useState("");
-      const [response,  setResponse]  = useState("");
-      const [submitted, setSubmitted] = useState(false);
-
-      const mcqOptions = [
-        { value: "litter", label: "Litter — each litter forms its own block; conditions assigned randomly within each litter", reason: "littermates share genetics, prenatal environment, and early housing conditions" },
-        { value: "weight", label: "Body weight — construct bins for ranges of body weight; each weight range becomes its own block", reason: "heavier mice may metabolize the compound differently and show different baseline activity levels" },
-        { value: "sex",    label: "Sex — male and female mice each form their own block; conditions are balanced within each sex", reason: "male and female mice may differ in baseline anxiety levels and hormonal responses to the compound" },
-        { value: "age",    label: "Age — group mice into blocks by age cohort; conditions are balanced within each cohort", reason: "older mice may show different baseline anxiety and locomotor activity independent of treatment" },
-      ];
-
-      const canSubmit = mcqAnswer && response.trim() && !submitted;
-
-      return (
-        <div>
-          <ProgressBar current={2} total={4} />
-          <Study1Card />
-
-          <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
-            marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-              Blocking by testing day solves the handler problem — both conditions are now represented in every daily session. But the 24 mice aren't a homogeneous pool. They vary biologically in ways that could influence their behavior in the maze, and those differences could end up unevenly distributed across conditions by chance.
-            </p>
-          </div>
-
-          <InstructionCard borderColor={C.blue}>
-            <p style={{ fontSize: "1rem", fontWeight: 700, color: C.black, margin: 0 }}>
-              What characteristic of the mice would be most useful to block by?
-            </p>
-          </InstructionCard>
-
-          {mcqOptions.map(opt => (
-            <MCQOption key={opt.value} label={opt.label} reason={opt.reason} selected={mcqAnswer === opt.value}
-              onClick={() => { if (!submitted) setMcqAnswer(opt.value); }}
-              disabled={submitted} />
-          ))}
-
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: C.black, margin: "16px 0 8px" }}>
-            Why? Describe your thinking.
-          </div>
-          <textarea
-            value={response}
-            onChange={e => setResponse(e.target.value)}
-            disabled={submitted}
-            placeholder="Type your response here…"
-            style={{ width: "100%", minHeight: "100px", padding: "12px 14px", fontSize: "1rem",
-              fontWeight: 500, color: C.black, borderRadius: "8px", border: `2px solid ${C.intLightGray}`,
-              outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6,
-              background: submitted ? C.lightGray : C.white }} />
-
-          {!submitted && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-              <StyledButton disabled={!canSubmit} onClick={() => setSubmitted(true)}>SUBMIT</StyledButton>
-            </div>
-          )}
-
-          {submitted && (
-            <div style={{ marginTop: "8px" }}>
-              <AlertBox type="info">Response saved — your instructor will discuss this in class.</AlertBox>
-            </div>
-          )}
-
-          {/* TODO: Replace with NavigationFooterV2 */}
-          <NavBar onPrev={onPrev} onNext={onNext} canPrev={true} canNext={submitted}
-            nextDisabledMsg="Select an answer and submit your response to continue" />
-        </div>
-      );
-    }
-
-    // ─── IHC Parameter screen (Screen 3) ─────────────────────────────────────────
-
-    function ParameterScreen({ onNext, onPrev, onParamsChange }) {
+    function ParamSection({ nt, minN, greatMaxN, onValidSubmit, tableRows, onAddRow }) {
+      const ntv = parseInt(nt);
       const [n,         setN]         = useState("");
       const [blockSize, setBlockSize] = useState("");
-      const [nt,        setNt]        = useState("2");
-      const [generated, setGenerated] = useState(false);
-      const [submitted, setSubmitted] = useState(false);
-      const [feedback,  setFeedback]  = useState(null);
+      const [vizN,      setVizN]      = useState(0);
+      const [vizBs,     setVizBs]     = useState(0);
       const [runKey,    setRunKey]    = useState(0);
+      const [feedback,  setFeedback]  = useState(null);
 
-      const fb = blockSize && n && nt ? getStudy2Feedback(blockSize, nt, n, MIN_N) : null;
-      const canGenerate = !!(n && nt && blockSize && parseInt(blockSize) > 0 && parseInt(n) > 0 && parseInt(nt) > 0);
-      const canNext = submitted && fb && fb.level !== "wrong";
+      const fb = blockSize && n ? getStudy2Feedback(blockSize, ntv, n, minN, greatMaxN) : null;
+      const canVisualize = !!(blockSize && n && parseInt(blockSize) > 0 && parseInt(n) > 0);
+      const isValid = fb && fb.level !== "wrong";
 
-      const resetOutput = () => { setGenerated(false); setSubmitted(false); setFeedback(null); };
+      const [showTryAnother, setShowTryAnother] = useState(false);
+      const [hasShuffled,    setHasShuffled]    = useState(false);
+      const [vizError,       setVizError]       = useState(null);
+
+      const resetOutput = () => { setFeedback(null); setShowTryAnother(false); setVizError(null); };
 
       const handleVisualize = () => {
-        if (!canGenerate) return;
-        setGenerated(true);
-        setRunKey(k => k + 1); // remounts animation, restarting it
+        if (!canVisualize) return;
+        const bs = parseInt(blockSize), ns = parseInt(n);
+        if (bs > 50 && ns > 100) {
+          setVizError("Block size cannot exceed 50 and total N cannot exceed 100.");
+          return;
+        }
+        if (bs > 50) {
+          setVizError("Block size cannot exceed 50.");
+          return;
+        }
+        if (ns > 100) {
+          setVizError("Total N cannot exceed 100.");
+          return;
+        }
+        setVizError(null);
+        setVizN(ns);
+        setVizBs(bs);
+        setRunKey(k => k + 1);
+        setHasShuffled(false);
+        setFeedback(null);
+        setShowTryAnother(false);
       };
 
-      const handleSubmit = () => {
+      const handleCheck = () => {
         if (!fb) return;
-        setSubmitted(true);
         setFeedback(fb);
-        if (onParamsChange) onParamsChange({ n, blockSize, nt });
+        if (isValid) {
+          setShowTryAnother(true);
+          const bs = parseInt(blockSize), ns = parseInt(n);
+          const isDupe = tableRows && tableRows.some(r => r.blockSize === bs && r.n === ns);
+          if (!isDupe) {
+            const row = { nt: ntv, blockSize: bs, n: ns };
+            if (onAddRow) onAddRow(row);
+            if (onValidSubmit) onValidSubmit({ n: String(ns), blockSize: String(bs), nt: String(ntv) });
+          }
+        }
       };
 
       return (
         <div>
-          <ProgressBar current={3} total={4} />
-          <Study2Card showParams={false} prevParams={null} />
-
-          <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
-            marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-              The colleague wants to <strong>block by staining batch</strong> to control for these between-batch differences. Each staining batch accommodates <strong>6–12 slides</strong>. A power analysis indicates a minimum of <strong>10 samples per treatment arm</strong> (20 samples total for 2 conditions).
-            </p>
-          </div>
-
-          <InstructionCard borderColor={C.blue}>
-            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-              Choose a block size and total N that satisfy the batch capacity constraints and meet the power analysis minimum.
-            </p>
-          </InstructionCard>
-
           {/* Inputs panel */}
           <div style={{ background: C.white, borderRadius: "10px", border: `1px solid ${C.intLightGray}`,
             padding: "16px", marginBottom: "16px" }}>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "flex-end", gap: "16px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 600, color: C.darkGray }}>Conditions</label>
+                  <div style={{ padding: "8px 10px", fontSize: "1rem", borderRadius: "8px", width: "90px",
+                    border: `2px solid ${C.intLightGray}`, color: C.midGray, fontWeight: 500,
+                    background: C.lightGray }}>{ntv}</div>
+                </div>
                 {[
-                  { label: "Conditions", value: nt, setter: setNt, min: 2, max: 6, placeholder: "" },
-                  { label: "Block size", value: blockSize, setter: setBlockSize, min: 1, max: 99, placeholder: "" },
-                  { label: "Total N", value: n, setter: setN, min: 1, max: 999, placeholder: "" },
-                ].map(({ label, value, setter, min, max, placeholder }) => (
+                  { label: "Block size", value: blockSize, setter: setBlockSize, min: 1, max: 50 },
+                  { label: "Total N",    value: n,         setter: setN,         min: 1, max: 100 },
+                ].map(({ label, value, setter, min, max }) => (
                   <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <label style={{ fontSize: "0.85rem", fontWeight: 600, color: C.darkGray }}>{label}</label>
-                    <input type="number" min={min} max={max} value={value} placeholder={placeholder}
+                    <input type="number" min={min} max={max} value={value}
                       onChange={e => { setter(e.target.value); resetOutput(); }}
                       style={{ padding: "8px 10px", fontSize: "1rem", borderRadius: "8px", width: "90px",
                         border: `2px solid ${C.intLightGray}`, outline: "none", color: C.black, fontWeight: 500 }} />
                   </div>
                 ))}
               </div>
-              <StyledButton disabled={!canGenerate} onClick={handleVisualize}>
+              <StyledButton disabled={!canVisualize} onClick={handleVisualize} style={{ width: BTN_W }}>
                 Visualize Blocks
               </StyledButton>
             </div>
+
+            {/* Table lives inside the inputs panel, below the inputs, appears after first valid row */}
+            {tableRows.length > 0 && <ResultsTable rows={tableRows} />}
           </div>
 
-          {/* Animation container — separate, outside the inputs panel */}
-          {generated && (
-            <BlockSequenceViz n={parseInt(n)} blockSize={parseInt(blockSize)} nTreatments={parseInt(nt)} runKey={runKey} />
+          {/* Viz — only updates when Visualize Blocks is clicked */}
+          {vizError && <AlertBox type="error">{vizError}</AlertBox>}
+          <BlockSequenceViz n={vizN} blockSize={vizBs}
+            nTreatments={ntv} runKey={runKey} onShuffled={() => setHasShuffled(true)} />
+
+          {/* Check Block Setup — only shown after Shuffle Within Blocks has been clicked */}
+          {vizN > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px", marginBottom: "16px" }}>
+              <StyledButton disabled={!hasShuffled || !fb} onClick={handleCheck} style={{ width: BTN_W }}>
+                Check Block Setup
+              </StyledButton>
+            </div>
           )}
 
+          {/* Feedback alert */}
           {feedback && (
             <AlertBox type={feedback.level === "great" ? "success" : feedback.level === "good" ? "warning" : "error"}>
-              <strong>{feedback.level === "great" ? "Great choices!" : feedback.level === "good" ? "Valid — but consider this:" : "Invalid parameters"}</strong>
+              <strong>{feedback.level === "great" ? "Great" : feedback.level === "good" ? "Good" : "Invalid Setup"}</strong>
               {" "}{feedback.msg}
             </AlertBox>
           )}
 
-          {generated && !canNext && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-              <StyledButton disabled={!fb} onClick={handleSubmit}>CHECK BLOCKS</StyledButton>
+          {/* Dismissible "try another" nudge — appears after a valid submission, cleared on input change or manual close */}
+          {showTryAnother && (
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px",
+              background: C.infoBg, border: `1px solid ${C.infoBorder}`, borderRadius: "8px",
+              padding: "12px 16px", marginBottom: "16px", color: C.blue, fontSize: "1rem", fontWeight: 500 }}>
+              <span>Try another valid combination — adjust block size or total N and visualize again.</span>
+              <button onClick={() => setShowTryAnother(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.blue,
+                  fontSize: "1.1rem", lineHeight: 1, padding: "0", flexShrink: 0 }}>✕</button>
             </div>
           )}
-
-          {/* TODO: Replace with NavigationFooterV2 */}
-          <NavBar onPrev={onPrev} onNext={onNext} canPrev={true} canNext={canNext}
-            nextDisabledMsg="Generate a sequence and submit valid parameters to continue" />
         </div>
       );
     }
 
-    // ─── Screen 3 ────────────────────────────────────────────────────────────────
+    function ParameterScreen({ onNext, onPrev, onParamsChange, tableRows, onAddRow }) {
+      const canNext = tableRows.length >= 2;
 
-    function Screen3({ onNext, onPrev, prevParams }) {
+      const handleValid = (params) => {
+        if (onParamsChange) onParamsChange(params);
+      };
+
+      return (
+        <div>
+          <ProgressBar current={1} total={2} />
+          <Study2Card showParams={false} prevParams={null} />
+
+          <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
+            marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
+              The colleague wants to <strong>block by staining batch</strong> to control for these between-batch differences. Each staining batch accommodates <strong>6–12 slides</strong>. The study has <strong>2 conditions</strong>. A power analysis indicates a minimum of <strong>10 samples per condition</strong> (20 samples total).
+            </p>
+          </div>
+
+          <InstructionCard borderColor={C.blue}>
+            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
+              Find two valid block randomization setups for this study. Use the visualizer to explore how different block sizes and total N values affect the block structure.
+            </p>
+          </InstructionCard>
+
+          <ParamSection nt={2} minN={MIN_N} greatMaxN={24}
+            onValidSubmit={handleValid} tableRows={tableRows} onAddRow={onAddRow} />
+
+          {/* TODO: Replace with NavigationFooterV2 */}
+          <NavBar onPrev={onPrev} onNext={onNext} canPrev={false} canNext={canNext}
+            nextDisabledMsg="Find two valid block setups to continue" />
+        </div>
+      );
+    }
+
+    // ─── Screen 3 (Case Study 2) ──────────────────────────────────────────────────
+
+    function Screen3({ onNext, onPrev, prevParams, prevRows }) {
+      const NT3 = 3;
       const [decision,          setDecision]          = useState(null);
       const [decisionSubmitted, setDecisionSubmitted] = useState(false);
       const [decisionFeedback,  setDecisionFeedback]  = useState(null);
       const [showParams,        setShowParams]        = useState(false);
 
-      const [n,              setN]              = useState("");
-      const [blockSize,      setBlockSize]      = useState("");
-      const [nt,             setNt]             = useState("3");
-      const [generated,      setGenerated]      = useState(false);
-      const [paramSubmitted, setParamSubmitted] = useState(false);
-      const [paramFeedback,  setParamFeedback]  = useState(null);
-      const [runKey,         setRunKey]         = useState(0);
+      const [screen2Rows, setScreen2Rows] = useState([]);
+      const canNext = screen2Rows.length >= 2;
 
       const prevBs = parseInt(prevParams && prevParams.blockSize);
       const stillValid = prevBs && (prevBs % 3 === 0);
@@ -966,8 +788,8 @@
           setDecisionFeedback({
             type: "error",
             msg: stillValid
-              ? `Block size ${prevBs} happens to be a multiple of 3, but that doesn't mean your previous total N still works. With 3 conditions the power analysis minimum is now 10 samples per treatment arm — your previous total N may no longer be sufficient, and it still needs to be a clean multiple of your block size. Both parameters need review.`
-              : `Block size ${prevBs} is not a multiple of 3. With 3 conditions, every staining batch must contain equal numbers of each group — a batch of ${prevBs} can't divide evenly among 3. You'll need a new block size (between 6–12 and divisible by 3) and a recalculated total N against the new minimum of 10 samples per arm.`,
+              ? `Block size ${prevBs} happens to be a multiple of 3, but that doesn't mean your previous total N still works. With 3 conditions the minimum is now 10 samples per condition — your previous total N may no longer be sufficient, and it still needs to be a clean multiple of your block size. Both parameters need review.`
+              : `Block size ${prevBs} is not a multiple of 3. With 3 conditions, every staining batch must contain equal numbers of each condition — a batch of ${prevBs} can't divide evenly among 3. Both parameters need review.`,
           });
           setShowParams(true);
         } else {
@@ -979,37 +801,31 @@
         }
       };
 
-      const resetOutput = () => { setGenerated(false); setParamSubmitted(false); setParamFeedback(null); };
-      const fb = blockSize && n && nt ? getStudy2Feedback(blockSize, nt, n, 30) : null;
-      const canGenerate = !!(n && nt && blockSize && parseInt(blockSize) > 0 && parseInt(n) > 0 && parseInt(nt) > 0);
-      const canNext = paramSubmitted && fb && fb.level !== "wrong";
-
-      const handleVisualize = () => {
-        if (!canGenerate) return;
-        setGenerated(true);
-        setRunKey(k => k + 1);
-      };
-
       return (
         <div>
-          <ProgressBar current={4} total={4} />
+          <ProgressBar current={2} total={2} />
 
           <div style={{ background: C.white, borderRadius: "8px", padding: "16px",
             marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
             <div style={{ fontSize: "1.2rem", fontWeight: 700, color: C.black, marginBottom: "8px" }}>New development</div>
             <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-              The colleague's PI has requested a <strong>saline control group</strong> be added to the IHC study. The study now has <strong>3 conditions</strong>. The power analysis minimum of 10 samples per treatment arm still applies.
+              The colleague's PI has requested a <strong>saline control group</strong> be added to the immunohistochemistry study. The study now has <strong>3 conditions</strong>. The minimum of 10 samples per condition still applies.
             </p>
           </div>
 
-          <InstructionCard borderColor={C.blue}>
-            <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-              Do you need to change the block randomization parameters?
-            </p>
-          </InstructionCard>
+          {prevRows && prevRows.length > 0 && <ResultsTable rows={prevRows} />}
+
+          <div style={{ marginTop: "16px" }}>
+            <InstructionCard borderColor={C.blue}>
+              <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
+                Would any of these prior setups for block randomization work?
+              </p>
+            </InstructionCard>
+          </div>
+
           {[
-            { value: "yes", label: "Yes — adding a condition changes the constraints on both block size and total N" },
-            { value: "no",  label: "No — the same parameters will work fine" },
+            { value: "yes", label: "Yes" },
+            { value: "no",  label: "No" },
           ].map(function(opt) {
             return (
               <MCQOption key={opt.value} label={opt.label} selected={decision === opt.value}
@@ -1020,7 +836,8 @@
 
           {!decisionSubmitted && (
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-              <StyledButton disabled={!decision} onClick={handleDecisionSubmit}>SUBMIT</StyledButton>
+              <StyledButton disabled={!decision} onClick={handleDecisionSubmit}
+                style={{ width: BTN_W }}>Submit</StyledButton>
             </div>
           )}
 
@@ -1030,63 +847,18 @@
             <div>
               <InstructionCard borderColor={C.blue}>
                 <p style={{ fontSize: "1rem", fontWeight: 500, color: C.darkGray, margin: 0, lineHeight: 1.6 }}>
-                  Choose a new block size and total N that satisfy the batch capacity constraints and meet the power analysis minimum for 3 conditions.
+                  Find two valid block randomization setups for the updated 3-condition study. Use the visualizer to explore how the constraints have changed.
                 </p>
               </InstructionCard>
-              {/* Inputs panel */}
-              <div style={{ background: C.white, borderRadius: "10px", border: `1px solid ${C.intLightGray}`,
-                padding: "16px", marginBottom: "16px", marginTop: "8px" }}>
-                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: "16px", flexWrap: "wrap" }}>
-                    {[
-                      { label: "Conditions", value: nt, setter: setNt, min: 2, max: 6, placeholder: "" },
-                      { label: "Block size", value: blockSize, setter: setBlockSize, min: 1, max: 99, placeholder: "" },
-                      { label: "Total N", value: n, setter: setN, min: 1, max: 999, placeholder: "" },
-                    ].map(({ label, value, setter, min, max, placeholder }) => (
-                      <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <label style={{ fontSize: "0.85rem", fontWeight: 600, color: C.darkGray }}>{label}</label>
-                        <input type="number" min={min} max={max} value={value} placeholder={placeholder}
-                          onChange={e => { setter(e.target.value); resetOutput(); }}
-                          style={{ padding: "8px 10px", fontSize: "1rem", borderRadius: "8px", width: "90px",
-                            border: `2px solid ${C.intLightGray}`, outline: "none", color: C.black, fontWeight: 500 }} />
-                      </div>
-                    ))}
-                  </div>
-                  <StyledButton disabled={!canGenerate} onClick={handleVisualize}>
-                    Visualize Blocks
-                  </StyledButton>
-                </div>
-              </div>
-
-              {/* Animation container — separate from inputs panel */}
-              {generated && (
-                <BlockSequenceViz n={parseInt(n)} blockSize={parseInt(blockSize)} nTreatments={parseInt(nt)} runKey={runKey} />
-              )}
-
-              {paramFeedback && (
-                <div style={{ marginTop: "12px" }}>
-                  <AlertBox type={paramFeedback.level === "great" ? "success" : paramFeedback.level === "good" ? "warning" : "error"}>
-                    <strong>{paramFeedback.level === "great" ? "Great choices!" : paramFeedback.level === "good" ? "Valid — but consider this:" : "Invalid parameters"}</strong>
-                    {" "}{paramFeedback.msg}
-                  </AlertBox>
-                </div>
-              )}
-
-              {generated && !canNext && (
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-                  <StyledButton disabled={!fb} onClick={() => {
-                    if (!fb) return;
-                    setParamSubmitted(true);
-                    setParamFeedback(fb);
-                  }}>CHECK BLOCKS</StyledButton>
-                </div>
-              )}
+              <ParamSection nt={NT3} minN={30} greatMaxN={36}
+                tableRows={screen2Rows} onAddRow={r => setScreen2Rows(prev => [...prev, r])}
+                onValidSubmit={() => {}} />
             </div>
           )}
 
           {/* TODO: Replace with NavigationFooterV2 */}
           <NavBar onPrev={onPrev} onNext={onNext} canPrev={true} canNext={canNext}
-            nextDisabledMsg="Visualize blocks and submit valid parameters to continue" />
+            nextDisabledMsg="Find two valid block setups to continue" />
         </div>
       );
     }
@@ -1100,8 +872,8 @@
           <div style={{ fontSize: "1.4rem", fontWeight: 700, color: C.black, marginBottom: "16px" }}>Activity Complete!</div>
           <div style={{ maxWidth: "560px", margin: "0 auto", fontSize: "1rem", fontWeight: 500,
             color: C.darkGray, lineHeight: 1.7, textAlign: "left" }}>
-            <p style={{ marginBottom: "12px" }}>You diagnosed a handler confound in a colleague's elevated plus maze design and recommended blocking by testing day — ensuring both conditions are represented in every daily session. You then recognized that litter membership is an independent source of biological variation, and that blocking by litter simultaneously controls for genetics, early environment, and handler exposure when one litter is tested per day.</p>
-            <p>You then helped design an IHC study from scratch: choosing a block size that balances predictability against efficiency, and a total N that meets the power analysis minimum while being a clean multiple of your block size. Finally, you saw that adding a condition forces you to revisit both constraints simultaneously.</p>
+            <p style={{ marginBottom: "12px" }}>You designed an immunohistochemistry study using block randomization — selecting a block size that fits the staining batch capacity, balances conditions per batch, and pairs with a total N that's a clean multiple of that block size.</p>
+            <p>You then saw that adding a third condition forces you to revisit both constraints simultaneously — block size must remain a multiple of the new number of conditions, and the total N minimum scales with each additional condition.</p>
           </div>
           {/* TODO: Replace with NavigationFooterV2 */}
           <NavBar onPrev={onPrev} onNext={() => {}} canPrev={true} canNext={false} nextDisabledMsg="" />
@@ -1113,23 +885,24 @@
 
     function App() {
       const [screen, setScreen] = useState(1);
-      const [screen3Params, setScreen3Params] = useState(null);
+      const [screen1Params, setScreen1Params] = useState(null);
+      const [screen1Rows,   setScreen1Rows]   = useState([]);
 
       useEffect(() => { window.scrollTo(0, 0); }, [screen]);
 
       return (
         <div style={{ background: "#F3F3F3", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
           <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px 120px" }}>
-            {screen === 1 && <Screen1 onNext={() => setScreen(2)} />}
-            {screen === 2 && <Screen2 onNext={() => setScreen(3)} onPrev={() => setScreen(1)} />}
-            {screen === 3 && (
-              <ParameterScreen onNext={() => setScreen(4)} onPrev={() => setScreen(2)}
-                onParamsChange={p => setScreen3Params(p)} />
+            {screen === 1 && (
+              <ParameterScreen onNext={() => setScreen(2)} onPrev={null}
+                onParamsChange={p => setScreen1Params(p)}
+                tableRows={screen1Rows} onAddRow={r => setScreen1Rows(prev => [...prev, r])} />
             )}
-            {screen === 4 && (
-              <Screen3 onNext={() => setScreen(5)} onPrev={() => setScreen(3)} prevParams={screen3Params} />
+            {screen === 2 && (
+              <Screen3 onNext={() => setScreen(3)} onPrev={() => setScreen(1)}
+                prevParams={screen1Params} prevRows={screen1Rows} />
             )}
-            {screen === 5 && <CongratsScreen onPrev={() => setScreen(4)} />}
+            {screen === 3 && <CongratsScreen onPrev={() => setScreen(2)} />}
           </div>
         </div>
       );
