@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Randomization Activity</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>* { box-sizing: border-box; } body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState } = React;
+
+const PURPLE  = '#6F00FF';
+const BLUE    = '#0082FF';
+const BLACK   = '#202020';
+const DGRAY   = '#333132';
+const MGRAY   = '#999999';
+const BORDER  = '#E0E0E0';
+const PAGEBG  = '#F3F3F3';
+const WHITE   = '#FFFFFF';
+const CBLUEBG = '#F0F4FF';
+
+const WEIGHT_CTRL = [23.5,25.1,24.8,26.2,23.9,25.5,24.1,26.8,25.0,24.3,25.8,23.7,26.1,24.9,25.3,23.8,26.5,24.7,25.1,24.4];
+const WEIGHT_TRT  = [24.2,25.8,23.9,26.4,24.7,25.1,24.5,26.0,25.3,24.8,25.6,23.6,26.2,24.9,25.4,24.1,26.7,25.0,24.3,25.7];
+const SURV_WEIGHT_CTRL = [139,142,138,144,141,137,143,140,136,145,138,142,139,141,143,137,144,140,142,138];
+const SURV_WEIGHT_TRT  = [141,138,143,140,144,139,142,137,145,141,140,143,138,142,144,139,141,143,140,142];
+const ROTAROD_CTRL = [82,88,95,90,78,102,85,110,92,80,98,106,84,112,88,95,76,104,91,108];
+const ROTAROD_TRT  = [108,118,125,112,135,122,140,115,130,128,120,138,110,145,124,132,116,142,126,119];
+const SURV_DISEASE_CTRL = [136,136,137,137,137,138,138,138,138,138,139,139,139,140,140,140,140,141,141,141];
+const SURV_DISEASE_TRT  = [141,142,142,142,142,143,143,143,143,144,144,144,144,144,145,145,145,145,145,145];
+const SURV_SEX = { male:[139,141,138,143,140,144,137,145,141,138,142,139,143,140,136,144,141,138,142,140,137], female:[142,137,144,140,136,143,141,139,145,138,142,140,143,137,144,141,139,142,138] };
+const SURV_LITTER = { A:[139,142,138,144,141,137,143,140], B:[136,145,138,142,139,141,143,137], C:[144,140,142,138,139,143,141,136], D:[145,138,142,140,137,144,139,141], E:[143,140,138,142,144,137,141,139] };
+const LITTER_COUNT_CTRL = { A:[4], B:[4], C:[4], D:[4], E:[4] };
+const LITTER_COUNT_TRT  = { A:[4], B:[4], C:[4], D:[4], E:[4] };
+const JL = [-5,4,-2,7,-8,3,-6,5,-1];
+const AGE_CTRL = Array(20).fill(70);
+const AGE_TRT  = Array(20).fill(70);
+const avg = a => a.reduce((s,v) => s+v, 0) / a.length;
+
+function linReg(xs, ys) {
+  const mx = avg(xs), my = avg(ys);
+  const m = xs.reduce((s,x,i) => s+(x-mx)*(ys[i]-my), 0) / xs.reduce((s,x) => s+(x-mx)**2, 0);
+  return { predict: x => m*x+(my-m*mx) };
+}
+
+const TAB_CONTEXT = [
+  { label: 'Age', text: 'All mice were enrolled at the same age (70 days), so there is no variation in age between groups. Age is controlled by design.' },
+  { label: 'Sex', text: 'Sex was not accounted for in group assignment. Both groups happened to end up with similar sex distributions, but this was not guaranteed.' },
+  { label: 'Weight', text: 'Weight was not measured or considered before assignment. Both groups ended up with similar weight distributions, but this balance was not ensured.' },
+  { label: 'Time to Fall', text: 'Disease stage was not considered before group assignment. Animals were simply caught and assigned sequentially, leaving this variable uncontrolled.' },
+  { label: 'Litter', text: 'Four animals from each litter were assigned to each group, so litter was balanced by design.' },
+];
+
+const MCQ1_OPTIONS = [
+  {id:'age',     label:'Age'},
+  {id:'sex',     label:'Sex'},
+  {id:'weight',  label:'Weight'},
+  {id:'rotarod', label:'Time to fall'},
+  {id:'litter',  label:'Litter'},
+];
+const MCQ1_FB = {
+  age:     {type:'info',    text:'All mice were enrolled at the same age — there is no variation in age between groups. Check another tab.'},
+  sex:     {type:'info',    text:'Sex is evenly split in both groups. Check another tab.'},
+  weight:  {type:'info',    text:'Weight is similar between groups — both centered around 25 g with comparable spread. Check another tab.'},
+  rotarod: {type:'success', text:'Time to fall is clearly lower in the Control group, indicating more advanced disease in those mice before treatment began.'},
+  litter:  {type:'info',    text:'Litter is evenly distributed — both groups have the same number of animals from each litter. Check another tab.'},
+};
+
+const MCQ2_OPTIONS = [
+  {id:'age',        label:'Age'},
+  {id:'sex',        label:'Sex'},
+  {id:'weight',     label:'Weight'},
+  {id:'timetofail', label:'Time to fall'},
+  {id:'litter',     label:'Litter'},
+];
+const MCQ2_FB = {
+  age:        {type:'info',    text:'Age is constant across all mice — it cannot be associated with variation in survival. Check another tab.'},
+  sex:        {type:'info',    text:'Survival time is similar between male and female mice. Check another tab.'},
+  weight:     {type:'info',    text:'Weight does not show a strong association with survival time here. Check another tab.'},
+  timetofail: {type:'success', text:'Mice with higher baseline time to fall — less advanced disease — survived noticeably longer, consistent with disease stage being associated with survival.'},
+  litter:     {type:'info',    text:'Survival times are similar across litters. Check another tab.'},
+};
+
+function InstructionCard({ title, children }) {
+  return (
+    <div style={{background:CBLUEBG,borderLeft:`4px solid ${BLUE}`,borderRadius:4,padding:16,marginBottom:16,boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}}>
+      {title && <p style={{margin:'0 0 8px',fontSize:'1.2rem',fontWeight:700,color:BLACK}}>{title}</p>}
+      {children}
+    </div>
+  );
+}
+
+function Alert({ type, text, text2, onClose }) {
+  if (!text) return null;
+  const p = {success:{bg:'#E8F5E9',bd:'#4CAF50',tx:'#1B5E20'},error:{bg:'#FFEBEE',bd:'#F44336',tx:'#B71C1C'},info:{bg:'#F0F4FF',bd:'#0082FF',tx:'#003D7A'}}[type];
+  return (
+    <div style={{background:p.bg,border:`1px solid ${p.bd}`,borderRadius:4,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+      <div style={{flex:1}}>
+        <span style={{fontSize:'0.95rem',fontWeight:500,color:p.tx}}>{text}</span>
+        {text2 && <><br/><span style={{fontSize:'0.95rem',fontWeight:500,color:p.tx}}>{text2}</span></>}
+      </div>
+      {onClose && <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:p.tx,fontSize:20,lineHeight:1,padding:0,marginLeft:12}}>×</button>}
+    </div>
+  );
+}
+
+function ProgressBar({ current, total }) {
+  return (
+    <div style={{marginBottom:24}}>
+      <p style={{margin:'0 0 6px',fontSize:'0.8rem',fontWeight:500,color:DGRAY}}>Screen {current} of {total}</p>
+      <div style={{height:8,background:BORDER,borderRadius:4,overflow:'hidden'}}>
+        <div style={{height:'100%',width:`${(current/total)*100}%`,background:PURPLE,borderRadius:4,transition:'width 0.3s ease'}}/>
+      </div>
+    </div>
+  );
+}
+
+function NavBar({ onPrev, onNext, showPrev, showNext, canNext, nextLabel, disabledMsg }) {
+  const [showTip, setShowTip] = useState(false);
+  return (
+    <div style={{position:'sticky',bottom:0,display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 32px',background:WHITE,borderTop:`1px solid ${BORDER}`,boxShadow:'0 -2px 10px rgba(0,0,0,0.1)',zIndex:1000,marginTop:24}}>
+      {showPrev
+        ? <button onClick={onPrev} style={{padding:'10px 20px',fontSize:'1rem',fontWeight:600,borderRadius:8,border:`2px solid ${PAGEBG}`,background:PAGEBG,color:DGRAY,cursor:'pointer'}}>PREVIOUS</button>
+        : <div/>}
+      {showNext && (
+        <div style={{position:'relative'}} onMouseEnter={() => !canNext && setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+          {showTip && !canNext && (
+            <div style={{position:'absolute',bottom:'110%',right:0,background:'rgba(0,0,0,0.85)',color:WHITE,padding:'8px 12px',borderRadius:6,fontSize:'0.85rem',whiteSpace:'nowrap',pointerEvents:'none'}}>{disabledMsg}</div>
+          )}
+          <button onClick={canNext ? onNext : undefined} disabled={!canNext} style={{padding:'10px 20px',fontSize:'1rem',fontWeight:600,borderRadius:8,background:canNext?BLACK:MGRAY,color:WHITE,border:`2px solid ${canNext?BLACK:MGRAY}`,cursor:canNext?'pointer':'not-allowed',boxShadow:canNext?'0 2px 8px rgba(0,0,0,0.15)':'none'}}>{nextLabel}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MCQRow({ opt, sel, correct, correctId, onClick }) {
+  const isSel = sel === opt.id;
+  const isOk = correct && opt.id === correctId;
+  const border = isOk ? '#4CAF50' : isSel ? PURPLE : BORDER;
+  const bg = isOk ? '#E8F5E9' : isSel ? 'rgba(111,0,255,0.08)' : WHITE;
+  const radio = isOk ? '#4CAF50' : isSel ? PURPLE : MGRAY;
+  return (
+    <div onClick={() => { if (correct) return; onClick(opt.id); }} style={{padding:'12px 16px',borderRadius:8,cursor:correct?'default':'pointer',border:`2px solid ${border}`,background:bg,display:'flex',alignItems:'center',gap:12,transition:'all 0.2s'}}>
+      <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,border:`2px solid ${radio}`,background:(isSel||isOk)?radio:'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {(isSel||isOk) && <div style={{width:6,height:6,borderRadius:'50%',background:WHITE}}/>}
+      </div>
+      <span style={{fontSize:'1rem',fontWeight:500,color:BLACK}}>{opt.label}</span>
+    </div>
+  );
+}
+
+function Legend({ items=[['Control',BLUE],['Treatment',PURPLE]] }) {
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:8,justifyContent:'center',paddingLeft:12,flexShrink:0}}>
+      {items.map(([lbl,clr]) => (
+        <div key={lbl} style={{display:'flex',alignItems:'center',gap:6}}>
+          <div style={{width:10,height:10,borderRadius:'50%',background:clr,flexShrink:0}}/>
+          <span style={{fontSize:'0.8rem',fontWeight:500,color:DGRAY,whiteSpace:'nowrap'}}>{lbl}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DotPlot({ dataCtrl, dataTrt, yLabel, yMin, yMax, yStep }) {
+  const JA = [-12,8,-5,15,-18,3,-8,12,-3,17,-14,6,-9,13,-1,10,-16,5,-7,11];
+  const JB = [7,-13,11,-4,16,-9,14,-2,-17,9,4,-11,18,-6,8,-15,2,13,-8,5];
+  const W=320,H=240,mg={t:16,r:16,b:26,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const gx=[mg.l+pw*0.28,mg.l+pw*0.72];
+  const ys = v => mg.t+ph-((v-yMin)/(yMax-yMin))*ph;
+  const ticks=[]; for(let v=yMin;v<=yMax;v+=yStep) ticks.push(v);
+  const mC=avg(dataCtrl),mT=avg(dataTrt);
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          {ticks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          <text x={gx[0]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>Control</text>
+          {dataCtrl.map((v,i)=><circle key={i} cx={gx[0]+JA[i]} cy={ys(v)} r="5" fill={BLUE} opacity="0.75"/>)}
+          <line x1={gx[0]-20} y1={ys(mC)} x2={gx[0]+20} y2={ys(mC)} stroke={BLUE} strokeWidth="3" strokeLinecap="round"/>
+          <text x={gx[1]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>Treatment</text>
+          {dataTrt.map((v,i)=><circle key={i} cx={gx[1]+JB[i]} cy={ys(v)} r="5" fill={PURPLE} opacity="0.75"/>)}
+          <line x1={gx[1]-20} y1={ys(mT)} x2={gx[1]+20} y2={ys(mT)} stroke={PURPLE} strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <Legend/>
+    </div>
+  );
+}
+
+function DotPlot2({ dataA, dataB, labelA, labelB, yLabel, yMin, yMax, yStep, colorA=BLUE, colorB=PURPLE }) {
+  const ja=[-8,5,-3,9,-11,2,-6,7,-1,10,-4,8,-7,3,-10,6,-2,11,-5,4,-9];
+  const jb=[4,-9,7,-2,11,-5,8,-1,-10,6,3,-7,9,-4,2,-11,5,-3,10,-8,1];
+  const W=320,H=240,mg={t:16,r:16,b:26,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const gx=[mg.l+pw*0.28,mg.l+pw*0.72];
+  const ys = v => mg.t+ph-((v-yMin)/(yMax-yMin))*ph;
+  const ticks=[]; for(let v=yMin;v<=yMax;v+=yStep) ticks.push(v);
+  const mA=avg(dataA),mB=avg(dataB);
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          {ticks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          <text x={gx[0]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelA}</text>
+          {dataA.map((v,i)=><circle key={i} cx={gx[0]+ja[i]} cy={ys(v)} r="5" fill={colorA} opacity="0.75"/>)}
+          <line x1={gx[0]-20} y1={ys(mA)} x2={gx[0]+20} y2={ys(mA)} stroke={colorA} strokeWidth="3" strokeLinecap="round"/>
+          <text x={gx[1]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelB}</text>
+          {dataB.map((v,i)=><circle key={i} cx={gx[1]+jb[i]} cy={ys(v)} r="5" fill={colorB} opacity="0.75"/>)}
+          <line x1={gx[1]-20} y1={ys(mB)} x2={gx[1]+20} y2={ys(mB)} stroke={colorB} strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <Legend items={[[labelA,colorA],[labelB,colorB]]}/>
+    </div>
+  );
+}
+
+function ScatterPlot({ xCtrl, yCtrl, xTrt, yTrt, xLabel, yLabel, xMin, xMax, xStep, yMin, yMax, yStep, unified=false }) {
+  const W=320,H=240,mg={t:16,r:16,b:26,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const xs = v => mg.l+((v-xMin)/(xMax-xMin))*pw;
+  const ys = v => mg.t+ph-((v-yMin)/(yMax-yMin))*ph;
+  const xTicks=[]; for(let v=xMin;v<=xMax;v+=xStep) xTicks.push(v);
+  const yTicks=[]; for(let v=yMin;v<=yMax;v+=yStep) yTicks.push(v);
+  const allX=[...xCtrl,...xTrt],allY=[...yCtrl,...yTrt];
+  const reg=linReg(allX,allY);
+  const x0=Math.min(...allX),x1=Math.max(...allX);
+  const ctrlColor = unified ? MGRAY : BLUE;
+  const trtColor  = unified ? MGRAY : PURPLE;
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          {yTicks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          {xTicks.map(v=><line key={v} x1={xs(v)} y1={mg.t} x2={xs(v)} y2={mg.t+ph} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          <line x1={mg.l} y1={mg.t+ph} x2={W-mg.r} y2={mg.t+ph} stroke={BORDER}/>
+          {yTicks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          {xTicks.map(v=>(<g key={v}><line x1={xs(v)} y1={mg.t+ph} x2={xs(v)} y2={mg.t+ph+4} stroke={DGRAY}/><text x={xs(v)} y={mg.t+ph+13} textAnchor="middle" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          <text x={mg.l+pw/2} y={mg.t+ph+23} textAnchor="middle" fontSize="10" fill={DGRAY}>{xLabel}</text>
+          {xTrt.map((x,i)=><circle key={`t${i}`} cx={xs(x)} cy={ys(yTrt[i])} r="5" fill={trtColor} opacity="0.8"/>)}
+          {xCtrl.map((x,i)=><circle key={`c${i}`} cx={xs(x)} cy={ys(yCtrl[i])} r="5" fill={ctrlColor} opacity="0.8"/>)}
+          <line x1={xs(x0)} y1={ys(reg.predict(x0))} x2={xs(x1)} y2={ys(reg.predict(x1))} stroke={DGRAY} strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round"/>
+        </svg>
+      </div>
+      {!unified && <Legend/>}
+    </div>
+  );
+}
+
+function LitterGroupedBarChart({ ctrlData, trtData, yLabel, yMin, yMax, yStep }) {
+  const keys = Object.keys(ctrlData);
+  const W=320,H=240,mg={t:16,r:16,b:36,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const ys = v => mg.t+ph-((v-yMin)/(yMax-yMin))*ph;
+  const ticks=[]; for(let v=yMin;v<=yMax;v+=yStep) ticks.push(v);
+  const groupW=pw/2, bw=12, gap=3;
+  const totalBarW = keys.length*bw+(keys.length-1)*gap;
+  const groups = [
+    {label:'Control', data:ctrlData, color:BLUE, gx:mg.l+groupW*0.5},
+    {label:'Treatment', data:trtData, color:PURPLE, gx:mg.l+groupW*1.5},
+  ];
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          {ticks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          <text x={mg.l+pw/2} y={H-6} textAnchor="middle" fontSize="10" fill={DGRAY}>Litter</text>
+          {groups.map(({label,data,color,gx}) => (
+            <g key={label}>
+              <text x={gx} y={H-16} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{label}</text>
+              {keys.map((k,i) => {
+                const val = Array.isArray(data[k]) ? avg(data[k]) : data[k][0];
+                const x=gx-totalBarW/2+i*(bw+gap);
+                const barH = (val-yMin)/(yMax-yMin)*ph;
+                const barY = ys(val);
+                return (
+                  <g key={k}>
+                    <rect x={x} y={barY} width={bw} height={barH} fill={color} opacity="0.85" rx="2"/>
+                    <text x={x+bw/2} y={barY+barH/2+4} textAnchor="middle" fontSize="9" fontWeight="700" fill={WHITE}>{k}</text>
+                  </g>
+                );
+              })}
+            </g>
+          ))}
+        </svg>
+      </div>
+      <Legend/>
+    </div>
+  );
+}
+
+function SexBarChart({ ctrlMale, ctrlFemale, trtMale, trtFemale, yLabel, yMax }) {
+  const W=320,H=240,mg={t:16,r:16,b:26,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const ys = v => mg.t+ph-(v/yMax)*ph;
+  const ticks=[0,Math.round(yMax/2),yMax];
+  const bw=20,gap=4,groupGap=32;
+  const groupW=(pw-groupGap)/2;
+  const g1x=mg.l+groupW/2, g2x=mg.l+groupW+groupGap+groupW/2;
+  const groups=[
+    {gx:g1x, label:'Control', male:ctrlMale, female:ctrlFemale, solidColor:BLUE},
+    {gx:g2x, label:'Treatment', male:trtMale, female:trtFemale, solidColor:PURPLE},
+  ];
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          <defs>
+            <pattern id="hatch-blue" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="6" stroke={BLUE} strokeWidth="2.5" opacity="0.7"/>
+            </pattern>
+            <pattern id="hatch-purple" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="6" stroke={PURPLE} strokeWidth="2.5" opacity="0.7"/>
+            </pattern>
+          </defs>
+          {ticks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          {groups.map(({gx,label,male,female,solidColor}) => {
+            const hatchId = solidColor===BLUE ? 'hatch-blue' : 'hatch-purple';
+            const mx=gx-gap/2-bw, fx=gx+gap/2;
+            return (
+              <g key={label}>
+                <rect x={mx} y={ys(male)} width={bw} height={(male/yMax)*ph} fill={solidColor} opacity="0.85" rx="2"/>
+                <rect x={fx} y={ys(female)} width={bw} height={(female/yMax)*ph} fill={`url(#${hatchId})`} rx="2"/>
+                <text x={gx} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{label}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8,justifyContent:'center',paddingLeft:12,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:14,height:10,background:BLUE,borderRadius:2,opacity:0.85}}/><span style={{fontSize:'0.8rem',fontWeight:500,color:DGRAY}}>Male</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:14,height:10,background:`repeating-linear-gradient(45deg,${BLUE},${BLUE} 2px,transparent 2px,transparent 4px)`,borderRadius:2}}/><span style={{fontSize:'0.8rem',fontWeight:500,color:DGRAY}}>Female</span></div>
+        <div style={{height:8}}/>
+        <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:10,height:10,borderRadius:'50%',background:BLUE}}/><span style={{fontSize:'0.8rem',fontWeight:500,color:DGRAY}}>Control</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:10,height:10,borderRadius:'50%',background:PURPLE}}/><span style={{fontSize:'0.8rem',fontWeight:500,color:DGRAY}}>Treatment</span></div>
+      </div>
+    </div>
+  );
+}
+
+function LitterSurvPlot({ data, yLabel, yMin, yMax, yStep }) {
+  const W=320,H=240,mg={t:16,r:16,b:44,l:52};
+  const pw=W-mg.l-mg.r,ph=H-mg.t-mg.b;
+  const keys=Object.keys(data);
+  const ys = v => mg.t+ph-((v-yMin)/(yMax-yMin))*ph;
+  const ticks=[]; for(let v=yMin;v<=yMax;v+=yStep) ticks.push(v);
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+      <div style={{width:'100%',maxWidth:360}}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">
+          {ticks.map(v=><line key={v} x1={mg.l} y1={ys(v)} x2={W-mg.r} y2={ys(v)} stroke={BORDER} strokeDasharray="3,2"/>)}
+          <line x1={mg.l} y1={mg.t} x2={mg.l} y2={mg.t+ph} stroke={BORDER}/>
+          {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
+          <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
+          <text x={mg.l+pw/2} y={H-6} textAnchor="middle" fontSize="10" fill={DGRAY}>Litter</text>
+          {keys.map((k,gi) => {
+            const vals=data[k],x=mg.l+(gi+0.5)*(pw/keys.length),m=avg(vals);
+            return (<g key={k}><text x={x} y={H-20} textAnchor="middle" fontSize="9" fontWeight="500" fill={DGRAY}>{k}</text>{vals.map((v,i)=><circle key={i} cx={x+JL[i%JL.length]} cy={ys(v)} r="4" fill={MGRAY} opacity="0.65"/>)}<line x1={x-16} y1={ys(m)} x2={x+16} y2={ys(m)} stroke={MGRAY} strokeWidth="3" strokeLinecap="round"/></g>);
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function Screen0({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
+  const TABS = ['Age','Sex','Weight','Time to Fall','Litter'];
+  const handleSelect = (id) => {
+    if (correct) return;
+    const next = sel === id ? '' : id;
+    setSel(next);
+    setFb(next ? MCQ1_FB[next] : null);
+    if (next === 'rotarod') setCorrect(true);
+  };
+  return (
+    <div>
+      <InstructionCard title="Check for imbalance: baseline data">
+        <p style={{margin:'0 0 10px',fontSize:'1rem',fontWeight:500,color:DGRAY}}>In this study, a transgenic ALS mouse model received either lithium or a control treatment. The goal was to determine whether lithium extends survival in an ALS mouse model. Group assignment was based on catching order, with the first two mice caught being assigned to the vehicle control and the second two to the lithium treatment.</p>
+        <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:DGRAY}}>These plots show measurements collected before treatment began. Each tab also describes how that variable was handled during group assignment. Look for differences between the Control and Treatment groups.</p>
+      </InstructionCard>
+      <div style={{display:'flex',background:WHITE,borderRadius:'8px 8px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',overflow:'hidden'}}>
+        {TABS.map((t,i) => (
+          <button key={t} onClick={() => setTab(i)} style={{flex:1,padding:'10px 4px',fontSize:'0.82rem',fontWeight:600,border:'none',borderBottom:`3px solid ${tab===i?PURPLE:'transparent'}`,background:tab===i?WHITE:PAGEBG,color:tab===i?PURPLE:DGRAY,cursor:'pointer'}}>{t}</button>
+        ))}
+      </div>
+      <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderTop:'none',borderRadius:'0 0 8px 8px',padding:'12px 16px',marginBottom:20}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:260}}>
+          {tab===0 && <DotPlot dataCtrl={AGE_CTRL} dataTrt={AGE_TRT} yLabel="Age (days)" yMin={60} yMax={80} yStep={10}/>}
+          {tab===1 && <SexBarChart ctrlMale={11} ctrlFemale={9} trtMale={10} trtFemale={10} yLabel="Count (n)" yMax={12}/>}
+          {tab===2 && <DotPlot dataCtrl={WEIGHT_CTRL} dataTrt={WEIGHT_TRT} yLabel="Weight (g)" yMin={22} yMax={28} yStep={2}/>}
+          {tab===3 && <DotPlot dataCtrl={ROTAROD_CTRL} dataTrt={ROTAROD_TRT} yLabel="Time to fall (s)" yMin={0} yMax={160} yStep={40}/>}
+          {tab===4 && <LitterGroupedBarChart ctrlData={LITTER_COUNT_CTRL} trtData={LITTER_COUNT_TRT} yLabel="Count (n)" yMin={0} yMax={6} yStep={2}/>}
+        </div>
+        <div style={{borderTop:`1px solid ${BORDER}`,marginTop:8,paddingTop:12}}>
+          <p style={{margin:'0 0 4px',fontSize:'0.8rem',fontWeight:600,color:MGRAY,textTransform:'uppercase',letterSpacing:'0.05em'}}>Study design</p>
+          <p style={{margin:0,fontSize:'0.95rem',fontWeight:500,color:DGRAY,lineHeight:1.5}}>{TAB_CONTEXT[tab].text}</p>
+        </div>
+      </div>
+      <p style={{margin:'0 0 12px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate appears imbalanced between the groups?</p>
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+        {MCQ1_OPTIONS.map(opt => {
+          const isSel = sel === opt.id;
+          const isOk = correct && opt.id === 'rotarod';
+          const border = isOk ? '#4CAF50' : isSel ? PURPLE : BORDER;
+          const bg = isOk ? '#E8F5E9' : isSel ? 'rgba(111,0,255,0.08)' : WHITE;
+          const radio = isOk ? '#4CAF50' : isSel ? PURPLE : MGRAY;
+          return (
+            <div key={opt.id} onClick={() => handleSelect(opt.id)}
+              style={{padding:'12px 16px',borderRadius:8,cursor:correct?'default':'pointer',border:`2px solid ${border}`,background:bg,display:'flex',alignItems:'center',gap:12,transition:'all 0.2s'}}
+            >
+              <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,border:`2px solid ${radio}`,background:(isSel||isOk)?radio:'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {(isSel||isOk) && <div style={{width:6,height:6,borderRadius:'50%',background:WHITE}}/>}
+              </div>
+              <span style={{fontSize:'1rem',fontWeight:500,color:BLACK}}>{opt.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {fb && <Alert type={fb.type} text={fb.text} onClose={() => { if (!correct) { setFb(null); setSel(''); } }}/>}
+    </div>
+  );
+}
+
+function Screen1({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
+  const TABS = ['Age','Sex','Weight','Time to Fall','Litter'];
+  const handleSelect = (id) => {
+    if (correct) return;
+    setSel(id);
+    setFb(MCQ2_FB[id]);
+    if (id === 'timetofail') setCorrect(true);
+  };
+  return (
+    <div>
+      <InstructionCard title="Examine the study results">
+        <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:DGRAY}}>These plots show survival time (days) for animals grouped by each covariate. Look for associations between each variable and survival time.</p>
+      </InstructionCard>
+      <div style={{display:'flex',background:WHITE,borderRadius:'8px 8px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',overflow:'hidden'}}>
+        {TABS.map((t,i) => <button key={t} onClick={() => setTab(i)} style={{flex:1,padding:'10px 4px',fontSize:'0.82rem',fontWeight:600,border:'none',borderBottom:`3px solid ${tab===i?PURPLE:'transparent'}`,background:tab===i?WHITE:PAGEBG,color:tab===i?PURPLE:DGRAY,cursor:'pointer'}}>{t}</button>)}
+      </div>
+      <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderTop:'none',borderRadius:'0 0 8px 8px',padding:'12px 16px',marginBottom:20,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:290}}>
+        {tab===0 && (
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'20px 0'}}>
+            <p style={{fontSize:'1rem',fontWeight:500,color:DGRAY,textAlign:'center',maxWidth:280}}>Age is constant across all mice — there is no variation in age that could correlate with survival.</p>
+          </div>
+        )}
+        {tab===1 && <DotPlot2 dataA={SURV_SEX.male} dataB={SURV_SEX.female} labelA="Male" labelB="Female" yLabel="Survival (days)" yMin={110} yMax={160} yStep={10} colorA={MGRAY} colorB={MGRAY}/>}
+        {tab===2 && <ScatterPlot xCtrl={WEIGHT_CTRL} yCtrl={SURV_WEIGHT_CTRL} xTrt={WEIGHT_TRT} yTrt={SURV_WEIGHT_TRT} xLabel="Baseline weight (g)" yLabel="Survival (days)" xMin={22} xMax={28} xStep={2} yMin={110} yMax={160} yStep={10} unified/>}
+        {tab===3 && <ScatterPlot xCtrl={ROTAROD_CTRL} yCtrl={SURV_DISEASE_CTRL} xTrt={ROTAROD_TRT} yTrt={SURV_DISEASE_TRT} xLabel="Baseline time to fall (s)" yLabel="Survival (days)" xMin={60} xMax={160} xStep={20} yMin={130} yMax={150} yStep={5} unified/>}
+        {tab===4 && <LitterSurvPlot data={SURV_LITTER} yLabel="Survival (days)" yMin={110} yMax={160} yStep={10}/>}
+      </div>
+      <p style={{margin:'0 0 12px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate shows the strongest association with survival time?</p>
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+        {MCQ2_OPTIONS.map(opt => (
+          <MCQRow key={opt.id} opt={opt} sel={sel} correct={correct} correctId="timetofail" onClick={handleSelect}/>
+        ))}
+      </div>
+      {fb && <Alert type={fb.type} text={fb.text} onClose={() => setFb(null)}/>}
+    </div>
+  );
+}
+
+function Screen2() {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div>
+      <div style={{background:'#E8F5E9',border:'1px solid #4CAF50',borderRadius:8,padding:'20px 24px',marginBottom:20}}>
+        <p style={{margin:'0 0 8px',fontSize:'1.2rem',fontWeight:700,color:'#1B5E20'}}>You found it.</p>
+        <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:'#1B5E20',lineHeight:1.6}}>Time to fall was the only variable clearly imbalanced at baseline — and it was also the variable most strongly associated with survival.</p>
+      </div>
+      {!revealed ? (
+        <div style={{display:'flex',justifyContent:'center',marginBottom:20}}>
+          <button
+            onClick={() => setRevealed(true)}
+            style={{padding:'12px 28px',fontSize:'1rem',fontWeight:600,borderRadius:8,background:BLACK,color:WHITE,border:`2px solid ${BLACK}`,cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.15)',transition:'all 0.2s ease'}}
+            onMouseEnter={e => { e.currentTarget.style.background = PURPLE; e.currentTarget.style.borderColor = PURPLE; }}
+            onMouseLeave={e => { e.currentTarget.style.background = BLACK; e.currentTarget.style.borderColor = BLACK; }}
+          >
+            How did this happen?
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderRadius:8,padding:16,marginBottom:16}}>
+            <p style={{margin:'0 0 16px',fontSize:'1rem',fontWeight:700,color:BLACK}}>The mechanism</p>
+            <p style={{margin:'0 0 16px',fontSize:'1rem',fontWeight:500,color:DGRAY}}>ALS reduces motor function. Mice with more advanced disease move more slowly — making them easier to catch. Because the first mice caught in each cage were assigned to Control, disease stage and group membership became linked.</p>
+            <div style={{display:'flex',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
+              {[
+                'Advanced disease stage',
+                'Slower movement',
+                'Mouse caught first',
+                'Assigned to Control',
+              ].map((step,i,arr) => (
+                <React.Fragment key={step}>
+                  <div style={{background:PAGEBG,border:`1px solid ${BORDER}`,borderRadius:6,padding:'8px 12px',fontSize:'0.85rem',fontWeight:600,color:BLACK,maxWidth:120,lineHeight:1.4}}>{step}</div>
+                  {i < arr.length-1 && <span style={{color:PURPLE,fontWeight:700,fontSize:'1.2rem',alignSelf:'center',flexShrink:0}}>→</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+          <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderRadius:8,padding:16}}>
+            <p style={{margin:'0 0 10px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Why randomization fixes this</p>
+            <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:DGRAY}}>If group assignment is random, catching order no longer determines group membership. The systematic tendency to catch sicker mice first is broken, and on average both groups end up with comparable disease stages at baseline.</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [screen, setScreen] = useState(0);
+  const [tab0,   setTab0]   = useState(0);
+  const [tab1,   setTab1]   = useState(0);
+  const [s0Sel,  setS0Sel]  = useState('');
+  const [s0Fb,   setS0Fb]   = useState(null);
+  const [s0Ok,   setS0Ok]   = useState(false);
+  const [s1Sel,  setS1Sel]  = useState('');
+  const [s1Fb,   setS1Fb]   = useState(null);
+  const [s1Ok,   setS1Ok]   = useState(false);
+  const TOTAL = 3;
+
+  const canNext = screen===0 ? s0Ok : screen===1 ? s1Ok : true;
+  const disabledMsg = screen===0 ? 'Identify the imbalanced covariate to continue' : screen===1 ? 'Identify the covariate to continue' : '';
+
+  return (
+    <>
+      <div style={{maxWidth:760,margin:'0 auto',padding:'24px 16px 24px'}}>
+        {screen < TOTAL && <ProgressBar current={screen+1} total={TOTAL}/>}
+        {screen===0 && <Screen0 tab={tab0} setTab={setTab0} sel={s0Sel} setSel={setS0Sel} fb={s0Fb} setFb={setS0Fb} correct={s0Ok} setCorrect={setS0Ok}/>}
+        {screen===1 && <Screen1 tab={tab1} setTab={setTab1} sel={s1Sel} setSel={setS1Sel} fb={s1Fb} setFb={setS1Fb} correct={s1Ok} setCorrect={setS1Ok}/>}
+        {screen===2 && <Screen2/>}
+      </div>
+      <NavBar
+        onPrev={() => setScreen(s => s-1)}
+        onNext={() => setScreen(s => s+1)}
+        showPrev={screen > 0}
+        showNext={screen <= 2}
+        canNext={canNext}
+        nextLabel={screen===2 ? 'COMPLETE ACTIVITY' : 'NEXT'}
+        disabledMsg={disabledMsg}
+      />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
