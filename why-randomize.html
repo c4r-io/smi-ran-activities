@@ -48,11 +48,11 @@ function linReg(xs, ys) {
 }
 
 const TAB_CONTEXT = [
-  { label: 'Age', text: 'All mice were enrolled at the same age (70 days), so there is no variation in age between groups. Age is controlled by design.' },
-  { label: 'Sex', text: 'Sex was not accounted for in group assignment. Both groups happened to end up with similar sex distributions, but this was not guaranteed.' },
-  { label: 'Weight', text: 'Weight was not measured or considered before assignment. Both groups ended up with similar weight distributions, but this balance was not ensured.' },
-  { label: 'Time to Fall', text: 'Disease stage was not considered before group assignment. Animals were simply caught and assigned sequentially, leaving this variable uncontrolled.' },
-  { label: 'Litter', text: 'Four animals from each litter were assigned to each group, so litter was balanced by design.' },
+  { label: 'Age', text: 'All mice were enrolled at the same age, so age was controlled by design.' },
+  { label: 'Sex', text: 'Sex was not accounted for in group assignment.' },
+  { label: 'Weight', text: 'Weight was not accounted for in group assignment.' },
+  { label: 'Time to Fall', text: 'Time to fall (rotarod score) was not accounted for in group assignment.' },
+  { label: 'Litter', text: 'Four animals per litter were assigned to each group, so litter was controlled by design.' },
 ];
 
 const MCQ1_OPTIONS = [
@@ -215,14 +215,13 @@ function DotPlot2({ dataA, dataB, labelA, labelB, yLabel, yMin, yMax, yStep, col
           {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
           <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
           <text x={gx[0]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelA}</text>
-          {dataA.map((v,i)=><circle key={i} cx={gx[0]+ja[i]} cy={ys(v)} r="5" fill={colorA} opacity="0.75"/>)}
+          {dataA.map((v,i)=><circle key={i} cx={gx[0]+ja[i%ja.length]} cy={ys(v)} r="5" fill={colorA} opacity="0.75"/>)}
           <line x1={gx[0]-20} y1={ys(mA)} x2={gx[0]+20} y2={ys(mA)} stroke={colorA} strokeWidth="3" strokeLinecap="round"/>
           <text x={gx[1]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelB}</text>
-          {dataB.map((v,i)=><circle key={i} cx={gx[1]+jb[i]} cy={ys(v)} r="5" fill={colorB} opacity="0.75"/>)}
+          {dataB.map((v,i)=><circle key={i} cx={gx[1]+jb[i%jb.length]} cy={ys(v)} r="5" fill={colorB} opacity="0.75"/>)}
           <line x1={gx[1]-20} y1={ys(mB)} x2={gx[1]+20} y2={ys(mB)} stroke={colorB} strokeWidth="3" strokeLinecap="round"/>
         </svg>
       </div>
-      <Legend items={[[labelA,colorA],[labelB,colorB]]}/>
     </div>
   );
 }
