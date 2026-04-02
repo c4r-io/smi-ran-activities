@@ -36,7 +36,7 @@ const TOTAL_SCREENS = 5;
 // ─── Scenario data ────────────────────────────────────────────────────────
 const SCENARIO_DETAILS = [
   { label: 'Intervention',    value: 'Daily D1 receptor agonist injections, days 35–60' },
-  { label: 'Outcome measure', value: 'Song similarity to a standard reference recording, assessed at day 90' },
+  { label: 'Outcome measure', value: 'Song learning score: similarity to a standard reference recording, assessed at day 90' },
   { label: 'Sample',          value: 'n = 16 male birds from 4 family groups (4 birds per group)' },
   { label: 'Data collection', value: 'Two cohorts of 8, starting 3 weeks apart' },
   { label: 'Baseline',        value: 'Singing activity measured at day 30' },
@@ -402,7 +402,7 @@ function Screen3({ covariates, ratings, setRatings }) {
       <ScenarioCard />
 
       <InstructionCard>
-        Rate how much each covariate could plausibly affect song learning score. <strong>Rationale is optional</strong> but will appear in your planning document.
+        Rate how much each covariate could plausibly affect the <strong>song learning score</strong>. Consider whether <strong>initial differences between groups</strong> on this covariate would contribute to differences in the outcome.
       </InstructionCard>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
