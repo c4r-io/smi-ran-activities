@@ -19,6 +19,7 @@
     const { useState } = React;
 
 
+
 // ─── Color tokens ─────────────────────────────────────────────────────────
 const PURPLE  = '#6F00FF';
 const BLUE    = '#0082FF';
@@ -361,7 +362,7 @@ function Screen2({ covariates, setCovariates }) {
       <ScenarioCard />
 
       <InstructionCard>
-        Does the study design already address each covariate?
+        Is this covariate already addressed by how birds were selected or assigned to groups?
       </InstructionCard>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
@@ -371,6 +372,7 @@ function Screen2({ covariates, setCovariates }) {
       </div>
 
       {/* TODO: DEV - Restore add-concern UI for bring-your-own scenario version */}
+      {/* TODO: DEV - The triage question ("Is this covariate already addressed by how birds were selected or assigned to groups?") and Screen 3 instruction are written for this specific zebra finch scenario. Generalize both to species-agnostic language for the bring-your-own variant (e.g., "...by how subjects were selected or assigned to groups?") */}
     </div>
   );
 }
