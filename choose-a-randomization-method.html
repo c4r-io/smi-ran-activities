@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Randomization Planning Activity</title>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #F3F3F3; }
+    textarea { resize: vertical; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+
+// ─── Color tokens ─────────────────────────────────────────────────────────
+const PURPLE  = '#6F00FF';
+const BLUE    = '#0082FF';
+const BLACK   = '#202020';
+const DGRAY   = '#333132';
+const MGRAY   = '#999999';
+const BORDER  = '#E0E0E0';
+const PAGEBG  = '#F3F3F3';
+const WHITE   = '#FFFFFF';
+const CBLUEBG = '#F0F4FF';
+
+const TOTAL_SCREENS = 5;
+
+// ─── Scenario data ────────────────────────────────────────────────────────
+const SCENARIO_DETAILS = [
+  { label: 'Intervention',    value: 'Daily D1 receptor agonist injections, days 35–60' },
+  { label: 'Outcome measure', value: 'Song similarity to a standard reference recording, assessed at day 90' },
+  { label: 'Sample',          value: 'n = 16 male birds from 4 family groups (4 birds per group)' },
+  { label: 'Data collection', value: 'Two cohorts of 8, starting 3 weeks apart' },
+  { label: 'Baseline',        value: 'Singing activity measured at day 30' },
+];
+
+const INITIAL_COVARIATES = [
+  { id: 'sex',      label: 'Sex',                    description: 'Male vs. female birds',                                                                                     custom: false, classification: null, handledBy: '' },
+  { id: 'clutch',   label: 'Family group',            description: 'Which family group a bird came from, affecting shared genetics, parental care, and early environment',              custom: false, classification: null, handledBy: '' },
+  { id: 'baseline', label: 'Baseline singing ability', description: 'Singing activity measured at day 30, before injections begin',                                            custom: false, classification: null, handledBy: '' },
+  { id: 'cohort',   label: 'Injection cohort',        description: 'Cohort 1 vs. Cohort 2. Cohorts are run 3 weeks apart, with potential seasonal and handler differences', custom: false, classification: null, handledBy: '' },
+
+  // REMOVED — restore for a more complex version of the activity:
+  // { id: 'tutor', label: 'Reference recording', description: 'Whether all birds were exposed to the same reference recording — fixed by design, makes for a clean triage example but redundant given scenario description', custom: false, classification: null, handledBy: '' },
+  // { id: 'age',   label: 'Age at injection start', description: 'Exact age when injections began (target: day 35, actual range: ±2 days) — narrow variance; arguably already handled by tight enrollment window', custom: false, classification: null, handledBy: '' },
+];
+
+// ─── Shared components ────────────────────────────────────────────────────
+
+// TODO: Replace with shared ScenarioCard component
+function ScenarioCard() {
+  return (
+    <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 20, marginBottom: 20 }}>
+      <p style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 500, color: DGRAY, lineHeight: 1.6 }}>
+        This study tests whether activating D1 dopamine receptors improves song learning in juvenile male zebra finches.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '148px 1fr', gap: '8px 16px', alignItems: 'start' }}>
+        {SCENARIO_DETAILS.map(({ label, value }) => (
+          <>
+            <p key={`l${label}`} style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: DGRAY, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 3 }}>{label}</p>
+            <p key={`v${label}`} style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: DGRAY, lineHeight: 1.5 }}>{value}</p>
+          </>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// TODO: Replace with shared InstructionCard component
+function InstructionCard({ title, children }) {
+  return (
+    <div style={{ background: CBLUEBG, borderLeft: `4px solid ${BLUE}`, borderRadius: 4, padding: 16, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+      {title && <p style={{ margin: '0 0 6px', fontSize: '1.2rem', fontWeight: 700, color: BLACK }}>{title}</p>}
+      <div style={{ fontSize: '1rem', fontWeight: 500, color: DGRAY, lineHeight: 1.6 }}>{children}</div>
+    </div>
+  );
+}
+const MAG_COLORS = { Low: '#2E7D32', Medium: '#E65100', High: '#C62828' };
+const MAG_BG     = { Low: '#E8F5E9', Medium: '#FFF3E0', High: '#FFEBEE' };
+const MAGNITUDE_OPTIONS = ['Low', 'Medium', 'High'];
+
+const METHODS = [
+  { id: 'simple',      label: 'Simple randomization',             description: 'Each bird is assigned to a group by chance, with no constraints on balance.' },
+  { id: 'block',       label: 'Block randomization',              description: 'Assignment is balanced within natural groupings such as collection cohorts or batches.' },
+  { id: 'stratified',  label: 'Stratified randomization',         description: 'Birds are grouped by a known covariate first; randomization occurs within each group.' },
+  { id: 'block_strat', label: 'Block + stratified randomization', description: 'Combines within-batch balancing with within-stratum randomization on a key covariate.' },
+];
+
+const METHOD_FEEDBACK = {
+  clutch: {
+    simple: {
+      rating: 'not_recommended',
+      body:   'With family group as your highest concern and n = 16, simple randomization cannot guarantee comparable group composition across the two groups.',
+      caveat: null,
+    },
+    block: {
+      rating: 'not_recommended',
+      body:   'Block randomization addresses the cohort batch effect but does not control for family group, your highest-concern variable.',
+      caveat: null,
+    },
+    stratified: {
+      rating: 'adequate',
+      body:   'Stratifying on family group directly addresses your highest-concern variable, ensuring balanced assignment within each group of 4.',
+      caveat: 'It does not explicitly address the cohort batch structure.',
+    },
+    block_strat: {
+      rating: 'great',
+      body:   'This approach addresses both the cohort batch effect and family group, your highest-concern variable.',
+      caveat: 'Best to discuss implementation details with a statistician.',
+    },
+  },
+  cohort: {
+    simple: {
+      rating: 'not_recommended',
+      body:   'With cohort as your highest concern, simple randomization cannot guarantee both groups are represented in each collection run.',
+      caveat: null,
+    },
+    block: {
+      rating: 'great',
+      body:   'Block randomization directly addresses your highest-concern variable, ensuring both groups are represented in each collection run.',
+      caveat: 'Family group balance is not guaranteed. With only 4 groups and n = 16, chance imbalance remains possible.',
+    },
+    stratified: {
+      rating: 'adequate',
+      body:   'Stratifying on injection cohort will balance assignment across the two runs.',
+      caveat: 'Blocking is generally more natural for a batch variable like cohort and achieves the same goal more cleanly.',
+    },
+    block_strat: {
+      rating: 'adequate',
+      body:   'This approach addresses the cohort batch effect and adds protection on family group.',
+      caveat: 'With cohort as the main concern, block alone is simpler and sufficient for this sample size.',
+    },
+  },
+  baseline: {
+    simple: {
+      rating: 'not_recommended',
+      body:   'With baseline singing ability as your highest concern, simple randomization cannot guarantee comparable ability levels across groups.',
+      caveat: null,
+    },
+    block: {
+      rating: 'not_recommended',
+      body:   'Block randomization addresses the cohort batch effect but does not control for baseline singing ability, your highest-concern variable.',
+      caveat: null,
+    },
+    stratified: {
+      rating: 'adequate',
+      body:   'Stratifying on baseline singing ability addresses your highest-concern variable.',
+      caveat: 'This continuous variable would need to be split into low and high groups before stratifying, which introduces an additional judgment call.',
+    },
+    block_strat: {
+      rating: 'great',
+      body:   'This approach addresses both the cohort batch effect and baseline singing ability, your highest-concern variable.',
+      caveat: 'Baseline singing ability is continuous and would need to be split into groups before stratifying.',
+    },
+  },
+};
+
+// TODO: Replace with shared StyledButton component
+function Btn({ children, onClick, disabled, variant = 'primary', width, title: tooltipTitle }) {
+  const [hov, setHov] = useState(false);
+  const V = {
+    primary:   { bg: hov ? PURPLE : BLACK,  color: WHITE, border: hov ? PURPLE : BLACK },
+    secondary: { bg: hov ? DGRAY  : PAGEBG, color: hov ? WHITE : DGRAY, border: hov ? DGRAY : PAGEBG },
+    tertiary:  { bg: hov ? PAGEBG : WHITE,  color: BLACK, border: hov ? BLACK : BORDER },
+  }[variant] || {};
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={tooltipTitle}
+      onMouseEnter={() => !disabled && setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        padding: '10px 20px', fontSize: '1rem', fontWeight: 600, borderRadius: 8,
+        border: `2px solid ${disabled ? BORDER : V.border}`,
+        background: disabled ? PAGEBG : V.bg,
+        color: disabled ? MGRAY : V.color,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'all 0.2s ease',
+        boxShadow: disabled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)',
+        width: width || 'auto', whiteSpace: 'nowrap',
+      }}
+    >{children}</button>
+  );
+}
+
+function Alert({ type, feedback, text, onDismiss }) {
+  const S = {
+    success: { bg: '#E8F5E9', bd: '#4CAF50', tx: '#1B5E20' },
+    error:   { bg: '#FFEBEE', bd: '#F44336', tx: '#B71C1C' },
+    info:    { bg: CBLUEBG,   bd: BLUE,      tx: '#003D7A' },
+    warning: { bg: '#FFF8E1', bd: '#FFC107', tx: '#5D4037' },
+  }[type];
+  if (!S || (!feedback && !text)) return null;
+  return (
+    <div style={{ background: S.bg, border: `1px solid ${S.bd}`, borderRadius: 6, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 16 }}>
+      <div style={{ flex: 1, lineHeight: 1.6 }}>
+        {feedback ? (
+          <>
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: S.tx }}>
+              {feedback.rating === 'great'            ? 'Great choice — this is a well-suited approach for this study.'
+               : feedback.rating === 'adequate'       ? 'Adequate with caveats — this can work but has limitations for this study.'
+               :                                        'Not recommended for this study.'}
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: '1rem', fontWeight: 500, color: S.tx }}>{feedback.body}</p>
+            {feedback.caveat && (
+              <p style={{ margin: '8px 0 0', fontSize: '1rem', fontWeight: 500, color: S.tx }}>
+                <strong>Caveat:</strong> {feedback.caveat}
+              </p>
+            )}
+          </>
+        ) : (
+          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: S.tx }}>{text}</p>
+        )}
+      </div>
+      {onDismiss && <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: S.tx, fontSize: 20, lineHeight: 1, padding: 0, marginLeft: 12, flexShrink: 0 }}>×</button>}
+    </div>
+  );
+}
+
+function ProgressBar({ current, total }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <p style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 500, color: DGRAY }}>Screen {current} of {total}</p>
+      <div style={{ height: 8, background: BORDER, borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${(current / total) * 100}%`, background: PURPLE, borderRadius: 4, transition: 'width 0.3s ease' }} />
+      </div>
+    </div>
+  );
+}
+
+// TODO: Replace with NavigationFooterV2
+function NavBar({ onPrev, onNext, showPrev, canNext, nextLabel, disabledMsg }) {
+  const [tip, setTip] = useState(false);
+  return (
+    <div style={{ position: 'sticky', bottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 32px', background: WHITE, borderTop: `1px solid ${BORDER}`, boxShadow: '0 -2px 10px rgba(0,0,0,0.1)', zIndex: 1000, marginTop: 24 }}>
+      {showPrev
+        ? <Btn variant="secondary" onClick={onPrev}>PREVIOUS</Btn>
+        : <div />}
+      <div style={{ position: 'relative' }}
+        onMouseEnter={() => !canNext && setTip(true)}
+        onMouseLeave={() => setTip(false)}>
+        {tip && !canNext && (
+          <div style={{ position: 'absolute', bottom: '110%', right: 0, background: 'rgba(0,0,0,0.85)', color: WHITE, padding: '8px 12px', borderRadius: 6, fontSize: '0.85rem', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 1001 }}>
+            {disabledMsg}
+          </div>
+        )}
+        <Btn variant="primary" onClick={onNext} disabled={!canNext}>{nextLabel}</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Screen 1: Study Context ──────────────────────────────────────────────
+function Screen1({ revealed, setRevealed }) {
+  return (
+    <div>
+      <ScenarioCard />
+
+      {/* Reveal button or revealed covariates */}
+      {!revealed ? (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+          <Btn variant="primary" onClick={() => setRevealed(true)}>Show Candidate Covariates</Btn>
+        </div>
+      ) : (
+        <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 20, marginTop: 0 }}>
+          <p style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 700, color: BLACK }}>Candidate covariates</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {INITIAL_COVARIATES.map(c => (
+              <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ color: PURPLE, fontWeight: 700, fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>·</span>
+                <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: DGRAY, lineHeight: 1.5 }}>
+                  <strong style={{ color: BLACK }}>{c.label}:</strong> {c.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Screen 2: Triage ─────────────────────────────────────────────────────
+
+// Which classifications are acceptable for NEXT to unlock
+const CORRECT_CLASSIFICATIONS = {
+  sex:      ['handled'],
+  clutch:   ['live'],
+  baseline: ['live', 'unsure'],
+  cohort:   ['live'],
+};
+
+// Immediate feedback per covariate × selection
+const TRIAGE_FEEDBACK = {
+  sex:      { handled: { ok: true }, live:    { ok: false }, unsure:  { ok: false } },
+  clutch:   { handled: { ok: false }, live:   { ok: true  }, unsure:  { ok: false } },
+  baseline: { handled: { ok: false }, live:   { ok: true  }, unsure:  { ok: true  } },
+  cohort:   { handled: { ok: false }, live:   { ok: true  }, unsure:  { ok: false } },
+};
+
+function TriageCard({ cov, onClassify }) {
+  const [hov, setHov] = useState(null);
+  const sel = cov.classification;
+  const fb = sel && TRIAGE_FEEDBACK[cov.id]?.[sel];
+  const locked = fb?.ok;
+
+  const OPTIONS = [
+    { val: 'handled', label: 'Yes' },
+    { val: 'live',    label: 'No' },
+    { val: 'unsure',  label: 'Not sure' },
+  ];
+
+  return (
+    <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: BLACK, lineHeight: 1.4, flex: 1 }}>
+          {cov.label}<span style={{ fontWeight: 500, color: DGRAY }}> — {cov.description}</span>
+        </p>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {OPTIONS.map(({ val, label }) => {
+            const isSelected = sel === val;
+            const isCorrect  = isSelected && fb?.ok;
+            const isWrong    = isSelected && !fb?.ok;
+            const isHov      = hov === val && !locked;
+            return (
+              <button key={val}
+                onClick={() => !locked && onClassify(val)}
+                onMouseEnter={() => !locked && setHov(val)}
+                onMouseLeave={() => setHov(null)}
+                style={{
+                  padding: '5px 14px', fontSize: '0.875rem', fontWeight: 600, borderRadius: 6, cursor: locked ? 'default' : 'pointer',
+                  border: `2px solid ${isCorrect ? '#4CAF50' : isWrong ? '#F44336' : isHov ? DGRAY : BORDER}`,
+                  background: isCorrect ? '#E8F5E9' : isWrong ? '#FFEBEE' : isHov ? PAGEBG : WHITE,
+                  color: isCorrect ? '#2E7D32' : isWrong ? '#B71C1C' : DGRAY,
+                  transition: 'all 0.15s',
+                }}>{label}</button>
+            );
+          })}
+        </div>
+      </div>
+      {fb && (
+        <Alert type={fb.ok ? 'success' : 'error'} text={fb.ok ? 'Correct.' : 'Incorrect.'} />
+      )}
+    </div>
+  );
+}
+
+function Screen2({ covariates, setCovariates }) {
+  const classify = (id, val) => setCovariates(p => p.map(c => c.id === id ? { ...c, classification: val } : c));
+
+  return (
+    <div>
+      <ScenarioCard />
+
+      <InstructionCard>
+        Does the study design already address each covariate?
+      </InstructionCard>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+        {covariates.map(c => (
+          <TriageCard key={c.id} cov={c} onClassify={val => classify(c.id, val)} />
+        ))}
+      </div>
+
+      {/* TODO: DEV - Restore add-concern UI for bring-your-own scenario version */}
+    </div>
+  );
+}
+
+// ─── Screen 3: Evaluate ───────────────────────────────────────────────────
+function Screen3({ covariates, ratings, setRatings }) {
+  const live      = covariates.filter(c => c.classification === 'live' || c.classification === 'unsure');
+  const highCount = live.filter(c => ratings[c.id]?.magnitude === 'High').length;
+  const allRated  = live.every(c => ratings[c.id]?.magnitude);
+
+  const setMag  = (id, v) => setRatings(p => ({ ...p, [id]: { ...p[id], magnitude: v } }));
+  const setNote = (id, v) => setRatings(p => ({ ...p, [id]: { ...p[id], rationale: v } }));
+
+  if (live.length === 0) {
+    return (
+      <div>
+        <ScenarioCard />
+        <InstructionCard>
+          All covariates are already addressed by the study design — nothing further to evaluate here.
+        </InstructionCard>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <ScenarioCard />
+
+      <InstructionCard>
+        Rate how much each covariate could plausibly affect song learning score. <strong>Rationale is optional</strong> but will appear in your planning document.
+      </InstructionCard>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+        {live.map(c => {
+          const r = ratings[c.id] || {};
+          return (
+            <div key={c.id} style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: BLACK, lineHeight: 1.4 }}>
+                    {c.label}
+                    {c.classification === 'unsure' && (
+                      <span style={{ marginLeft: 8, fontSize: '0.75rem', fontWeight: 700, color: '#E65100', background: '#FFF3E0', border: '1px solid #FFCC80', borderRadius: 4, padding: '1px 6px' }}>uncertain if handled</span>
+                    )}
+                    <span style={{ fontWeight: 500, color: DGRAY }}> — {c.description}</span>
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {MAGNITUDE_OPTIONS.map(m => {
+                    const active = r.magnitude === m;
+                    return (
+                      <button key={m} onClick={() => setMag(c.id, m)}
+                        style={{
+                          padding: '5px 14px', fontSize: '0.875rem', fontWeight: 600, borderRadius: 6,
+                          border: `2px solid ${active ? PURPLE : BORDER}`,
+                          background: active ? 'rgba(111,0,255,0.08)' : WHITE,
+                          color: active ? PURPLE : DGRAY,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                        }}>{m}</button>
+                    );
+                  })}
+                </div>
+              </div>
+              <textarea
+                placeholder="Rationale (optional) — why do you expect this to matter for the outcome?"
+                value={r.rationale || ''}
+                onChange={e => setNote(c.id, e.target.value)}
+                rows={2}
+                style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem', borderRadius: 6, border: `1px solid ${BORDER}`, background: PAGEBG, color: DGRAY, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {allRated && highCount === 0 && (
+        <Alert type="warning"
+          text="Rate one covariate as high. Identifying the most consequential variable is the key decision here." />
+      )}
+      {highCount > 1 && (
+        <Alert type="warning"
+          text="With n = 16, rating more than one covariate as high makes balanced stratification impractical. Reconsider which covariate is most likely to affect the outcome." />
+      )}
+    </div>
+  );
+}
+
+// ─── Screen 4: Method quiz ────────────────────────────────────────────────
+function Hi({ children }) {
+  return <strong style={{ color: PURPLE }}>{children}</strong>;
+}
+
+function getMethodDescriptions(highCov) {
+  const id    = highCov?.id;
+  const label = highCov?.label || 'the high-priority covariate';
+
+  const descBlock = <>Assignment is balanced within <Hi>injection cohorts</Hi>, ensuring both groups are represented in each collection run.</>;
+
+  const descStratified = id === 'cohort'
+    ? <>Birds are first grouped by <Hi>injection cohort</Hi>. Blocking is generally more appropriate for a batch variable like cohort.</>
+    : id === 'baseline'
+    ? <>Birds are first grouped by <Hi>baseline singing ability</Hi>. This continuous variable would need to be split into low and high groups before stratifying.</>
+    : <>Birds are first grouped by <Hi>{label}</Hi>, then randomized within each group of 4.</>;
+
+  const descBlockStrat = id === 'cohort'
+    ? <>Cohort is a batch variable. Blocking directly on <Hi>injection cohort</Hi> is more appropriate than stratifying on it.</>
+    : id === 'baseline'
+    ? <>Balances assignment within <Hi>injection cohorts</Hi> and stratifies on <Hi>baseline singing ability</Hi>, though this continuous variable would need to be split into groups first.</>
+    : <>Balances assignment within <Hi>injection cohorts</Hi> and stratifies on <Hi>{label}</Hi>.</>;
+
+  return {
+    simple:      'Each bird is assigned to a group by chance, with no constraints on balance.',
+    block:       descBlock,
+    stratified:  descStratified,
+    block_strat: descBlockStrat,
+  };
+}
+
+function Screen4({ covariates, ratings, selected, setSelected, feedback, setFeedback, setCanProceed }) {
+  const [hov, setHov] = useState(null);
+  const live    = covariates.filter(c => c.classification === 'live' || c.classification === 'unsure');
+  const highCov = live.find(c => ratings[c.id]?.magnitude === 'High');
+  const descs   = getMethodDescriptions(highCov);
+
+  const handleSelect = (id) => {
+    setSelected(id);
+    if (feedback) setFeedback(null);
+  };
+
+  const handleSubmit = () => {
+    const fb = METHOD_FEEDBACK[highCov?.id]?.[selected];
+    if (!fb) return;
+    setFeedback(fb);
+    if (fb.rating === 'great' || fb.rating === 'adequate') setCanProceed(true);
+  };
+
+  return (
+    <div>
+      {/* Covariate impact summary */}
+      {live.length > 0 && (
+        <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
+          <p style={{ margin: '0 0 12px', fontSize: '0.8rem', fontWeight: 700, color: DGRAY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>How much could each covariate affect the outcome?</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {live.map(c => {
+              const r = ratings[c.id] || {};
+              return (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: BLACK }}>{c.label}</p>
+                  {r.magnitude
+                    ? <span style={{ fontSize: '0.8rem', fontWeight: 700, color: DGRAY, background: PAGEBG, borderRadius: 4, padding: '2px 8px', flexShrink: 0 }}>{r.magnitude}</span>
+                    : <span style={{ fontSize: '0.8rem', fontWeight: 500, color: DGRAY, flexShrink: 0 }}>Not rated</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <InstructionCard>
+        Based on your ratings, <strong>select a randomization method</strong> for this study.
+      </InstructionCard>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {METHODS.map(m => {
+          const isSel = selected === m.id;
+          const isHov = hov === m.id;
+          return (
+            <div key={m.id}
+              onClick={() => handleSelect(m.id)}
+              onMouseEnter={() => setHov(m.id)}
+              onMouseLeave={() => setHov(null)}
+              style={{
+                padding: 16, borderRadius: 8,
+                cursor: 'pointer',
+                border: `2px solid ${isSel ? PURPLE : BORDER}`,
+                background: isSel ? 'rgba(111,0,255,0.06)' : WHITE,
+                boxShadow: isHov ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                transform: isHov ? 'translateY(-1px)' : 'none',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+              }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isSel ? PURPLE : BORDER}`, background: isSel ? PURPLE : WHITE, flexShrink: 0, marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                {isSel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: WHITE }} />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: BLACK }}>{m.label}</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: DGRAY, lineHeight: 1.5 }}>{descs[m.id]}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Btn variant="primary" onClick={handleSubmit} disabled={!selected}>Submit</Btn>
+      </div>
+
+      {feedback && (
+        <Alert
+          type={feedback.rating === 'great' ? 'success' : feedback.rating === 'adequate' ? 'warning' : 'error'}
+          feedback={feedback}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Screen 5: Summary document ───────────────────────────────────────────
+function DocSection({ title, children, large = false }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <p style={{ margin: '0 0 12px', fontSize: large ? '1.1rem' : '0.75rem', fontWeight: 700, color: large ? BLACK : DGRAY, textTransform: large ? 'none' : 'uppercase', letterSpacing: large ? 0 : '0.07em' }}>{title}</p>
+      {children}
+    </div>
+  );
+}
+function Divider() { return <div style={{ height: 1, background: PAGEBG, margin: '0 0 24px' }} />; }
+
+function Screen5({ covariates, ratings, selectedMethod }) {
+  const [copied, setCopied] = useState(false);
+
+  const handled   = covariates.filter(c => c.classification === 'handled');
+  const live      = covariates.filter(c => c.classification === 'live' || c.classification === 'unsure');
+  const method    = METHODS.find(m => m.id === selectedMethod);
+  const highCov   = live.find(c => ratings[c.id]?.magnitude === 'High');
+  const fb        = METHOD_FEEDBACK[highCov?.id]?.[selectedMethod];
+  const descs     = getMethodDescriptions(highCov);
+  const hasUnsure = covariates.some(c => c.classification === 'unsure');
+
+  const buildText = () => {
+    let t = 'RANDOMIZATION PLANNING DOCUMENT\n\n';
+    t += 'STUDY OVERVIEW\n';
+    SCENARIO_DETAILS.forEach(({ label, value }) => { t += `  ${label}: ${value}\n`; });
+    t += '\nCOVARIATE REVIEW\n';
+    t += 'Covariate | Status | Level of concern | Notes\n';
+    covariates.forEach(c => {
+      const r = ratings[c.id] || {};
+      const isLive = c.classification === 'live' || c.classification === 'unsure';
+      const status = c.classification === 'handled' ? 'Addressed by design'
+        : c.classification === 'unsure' ? 'Uncertain'
+        : 'Needs consideration';
+      const mag  = isLive && r.magnitude ? r.magnitude : '—';
+      const note = isLive && r.rationale ? r.rationale : '—';
+      t += `  ${c.label} | ${status} | ${mag} | ${note}\n`;
+    });
+    t += `\nSELECTED METHOD\n  ${method?.label || '—'}\n  ${fb?.body || ''}${fb?.caveat ? ' Caveat: ' + fb.caveat : ''}\n`;
+    if (hasUnsure) t += '\nITEMS TO VERIFY\n  ' + covariates.filter(c => c.classification === 'unsure').map(c => c.label).join(', ') + '. Confirm with PI or statistician whether these are fully addressed by study design.\n';
+    t += '\nThis document represents a starting position for discussion with a PI or statistical consultant.\n';
+    return t;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(buildText()).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([buildText()], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'randomization-planning-document.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 24, marginBottom: 16 }}>
+        <p style={{ margin: '0 0 24px', fontSize: '1.2rem', fontWeight: 700, color: BLACK }}>Randomization Planning Document</p>
+
+        {/* Study overview */}
+        <DocSection title="Study overview" large>
+          <div style={{ display: 'grid', gridTemplateColumns: '148px 1fr', gap: '8px 16px', alignItems: 'start' }}>
+            {SCENARIO_DETAILS.map(({ label, value }) => (
+              <>
+                <p key={`l${label}`} style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: DGRAY, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 3 }}>{label}</p>
+                <p key={`v${label}`} style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: DGRAY, lineHeight: 1.5 }}>{value}</p>
+              </>
+            ))}
+          </div>
+        </DocSection>
+
+        <Divider />
+
+        {/* Covariate review table */}
+        <DocSection title="Covariate review" large>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <thead>
+              <tr style={{ background: PAGEBG, borderBottom: `1px solid ${BORDER}` }}>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: DGRAY, width: '28%' }}>Covariate</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: DGRAY, width: '22%' }}>Status</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: DGRAY, width: '14%' }}>Level of concern</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: DGRAY, width: '36%' }}>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {covariates.map((c, i) => {
+                const r = ratings[c.id] || {};
+                const isLive = c.classification === 'live' || c.classification === 'unsure';
+                const statusLabel = c.classification === 'handled' ? 'Addressed by design'
+                  : c.classification === 'unsure' ? 'Uncertain'
+                  : 'Needs consideration';
+                const statusColor = c.classification === 'handled' ? '#2E7D32'
+                  : c.classification === 'unsure' ? '#E65100'
+                  : BLACK;
+                return (
+                  <tr key={c.id} style={{ borderTop: i === 0 ? 'none' : `1px solid ${BORDER}`, verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: BLACK }}>{c.label}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 500, color: statusColor }}>{statusLabel}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      {isLive && r.magnitude
+                        ? <span style={{ fontWeight: 700, color: DGRAY }}>{r.magnitude}</span>
+                        : <span style={{ color: DGRAY }}>—</span>}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: DGRAY, lineHeight: 1.5 }}>
+                      {isLive && r.rationale ? r.rationale : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </DocSection>
+
+        <Divider />
+
+        {/* Selected method */}
+        <DocSection title="Selected method" large>
+          <p style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 700, color: BLACK }}>{method?.label}</p>
+          <p style={{ margin: '0 0 6px', fontSize: '0.875rem', fontWeight: 500, color: DGRAY, lineHeight: 1.6 }}>{descs[selectedMethod]}</p>
+          {fb?.caveat && <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: DGRAY, lineHeight: 1.6 }}><strong>Caveat:</strong> {fb.caveat}</p>}
+        </DocSection>
+
+        {hasUnsure && (
+          <>
+            <Divider />
+            <DocSection title="Items to verify">
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: DGRAY, lineHeight: 1.6 }}>
+                {covariates.filter(c => c.classification === 'unsure').map(c => c.label).join(', ')} — confirm with PI or statistician whether these are fully addressed by study design.
+              </p>
+            </DocSection>
+          </>
+        )}
+
+        <div style={{ height: 1, background: PAGEBG, marginBottom: 16 }} />
+        <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 500, color: DGRAY, fontStyle: 'italic', lineHeight: 1.5 }}>
+          This document is a starting position to review with a PI or statistical consultant. These ratings should be considered alongside domain knowledge about this model system before finalizing an approach.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <Btn variant="secondary" onClick={handleCopy}>{copied ? '✓ Copied' : 'Copy'}</Btn>
+        <Btn variant="primary" onClick={handleDownload}>Download</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Congrats ─────────────────────────────────────────────────────────────
+function Congrats({ onPrev }) {
+  return (
+    <div>
+      <div style={{ background: '#E8F5E9', border: '1px solid #4CAF50', borderRadius: 8, padding: 24, marginBottom: 20 }}>
+        <p style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 700, color: '#1B5E20' }}>Activity complete.</p>
+        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500, color: '#1B5E20', lineHeight: 1.6 }}>
+          You worked through the full decision process: identifying potential confounds, triaging what's already addressed by study design, evaluating how much each remaining variable could affect the outcome, and arriving at a documented starting position. That's the core of defensible randomization planning. Not finding the one right answer, but being able to explain your reasoning to someone with domain expertise.
+        </p>
+      </div>
+      <Btn variant="secondary" onClick={onPrev}>PREVIOUS</Btn>
+    </div>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState(1);
+
+  // S1
+  const [revealed, setRevealed] = useState(false);
+  // S2
+  const [covariates, setCovariates] = useState(INITIAL_COVARIATES.map(c => ({ ...c })));
+  // S3
+  const [ratings, setRatings] = useState({});
+  // S4
+  const [selMethod,  setSelMethod]  = useState(null);
+  const [methodFb,   setMethodFb]   = useState(null);
+  const [s4CanNext,  setS4CanNext]  = useState(false);
+
+  const live = covariates.filter(c => c.classification === 'live' || c.classification === 'unsure');
+  const allClassified = covariates.every(c => c.classification !== null);
+  const allCorrect    = covariates.every(c => {
+    const acceptable = CORRECT_CLASSIFICATIONS[c.id];
+    return acceptable ? acceptable.includes(c.classification) : c.classification !== null;
+  });
+  const highCount     = live.filter(c => ratings[c.id]?.magnitude === 'High').length;
+  const allRated      = live.length === 0 || live.every(c => ratings[c.id]?.magnitude);
+  const isCongrats    = screen === TOTAL_SCREENS + 1;
+
+  const canProceed =
+    screen === 1 ? revealed :
+    screen === 2 ? allCorrect :
+    screen === 3 ? (allRated && highCount === 1) :
+    screen === 4 ? s4CanNext :
+    true;
+
+  const disabledMsg =
+    screen === 1 ? 'Reveal the candidate covariates to continue' :
+    screen === 2 ? 'Classify all covariates correctly to continue' :
+    screen === 3 ? (!allRated ? 'Rate all covariates to continue' : highCount === 0 ? 'Rate one covariate as high to continue' : 'Reduce high-magnitude ratings to one before continuing') :
+    screen === 4 ? 'Submit an adequate or great choice to continue' : '';
+
+  return (
+    <>
+
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 16px 120px', fontFamily: 'system-ui, -apple-system, sans-serif', background: PAGEBG, minHeight: '100vh' }}>
+
+        {!isCongrats && <ProgressBar current={screen} total={TOTAL_SCREENS} />}
+
+        {screen === 1 && <Screen1 revealed={revealed} setRevealed={setRevealed} />}
+        {screen === 2 && <Screen2 covariates={covariates} setCovariates={setCovariates} />}
+        {screen === 3 && <Screen3 covariates={covariates} ratings={ratings} setRatings={setRatings} />}
+        {screen === 4 && (
+          <Screen4 covariates={covariates} ratings={ratings}
+            selected={selMethod} setSelected={setSelMethod}
+            feedback={methodFb} setFeedback={setMethodFb} setCanProceed={setS4CanNext} />
+        )}
+        {screen === 5 && <Screen5 covariates={covariates} ratings={ratings} selectedMethod={selMethod} />}
+        {isCongrats  && <Congrats onPrev={() => setScreen(TOTAL_SCREENS)} />}
+      </div>
+
+      {/* TODO: Replace with NavigationFooterV2 */}
+      {!isCongrats && (
+        <NavBar
+          onPrev={() => setScreen(s => s - 1)}
+          onNext={() => setScreen(s => s + 1)}
+          showPrev={screen > 1}
+          canNext={canProceed}
+          nextLabel={screen === TOTAL_SCREENS ? 'COMPLETE ACTIVITY' : 'NEXT'}
+          disabledMsg={disabledMsg}
+        />
+      )}
+    </>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
