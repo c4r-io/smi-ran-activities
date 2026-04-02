@@ -48,11 +48,11 @@ function linReg(xs, ys) {
 }
 
 const TAB_CONTEXT = [
-  { label: 'Age', text: 'All mice were enrolled at the same age (70 days), so there is no variation in age between groups. Age is controlled by design.' },
-  { label: 'Sex', text: 'Sex was not accounted for in group assignment. Both groups happened to end up with similar sex distributions, but this was not guaranteed.' },
-  { label: 'Weight', text: 'Weight was not measured or considered before assignment. Both groups ended up with similar weight distributions, but this balance was not ensured.' },
-  { label: 'Time to Fall', text: 'Disease stage was not considered before group assignment. Animals were simply caught and assigned sequentially, leaving this variable uncontrolled.' },
-  { label: 'Litter', text: 'Four animals from each litter were assigned to each group, so litter was balanced by design.' },
+  { label: 'Age',          text: 'All mice were enrolled at the same age, so age was controlled by design.' },
+  { label: 'Sex',          text: 'Sex was not accounted for in group assignment.' },
+  { label: 'Weight',       text: 'Weight was not accounted for in group assignment.' },
+  { label: 'Time to Fall', text: 'Time to fall (rotarod score) was not accounted for in group assignment.' },
+  { label: 'Litter',       text: 'Four animals per litter were assigned to each group, so litter was controlled by design.' },
 ];
 
 const MCQ1_OPTIONS = [
@@ -84,6 +84,8 @@ const MCQ2_FB = {
   timetofail: {type:'success', text:'Mice with higher baseline time to fall — less advanced disease — survived noticeably longer, consistent with disease stage being associated with survival.'},
   litter:     {type:'info',    text:'Survival times are similar across litters. Check another tab.'},
 };
+
+const TABS = ['Age','Sex','Weight','Time to Fall','Litter'];
 
 function InstructionCard({ title, children }) {
   return (
@@ -215,14 +217,13 @@ function DotPlot2({ dataA, dataB, labelA, labelB, yLabel, yMin, yMax, yStep, col
           {ticks.map(v=>(<g key={v}><line x1={mg.l-4} y1={ys(v)} x2={mg.l} y2={ys(v)} stroke={DGRAY}/><text x={mg.l-7} y={ys(v)+4} textAnchor="end" fontSize="10" fill={DGRAY}>{v}</text></g>))}
           <text x="12" y={mg.t+ph/2} textAnchor="middle" fontSize="10" fill={DGRAY} transform={`rotate(-90,12,${mg.t+ph/2})`}>{yLabel}</text>
           <text x={gx[0]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelA}</text>
-          {dataA.map((v,i)=><circle key={i} cx={gx[0]+ja[i]} cy={ys(v)} r="5" fill={colorA} opacity="0.75"/>)}
+          {dataA.map((v,i)=><circle key={i} cx={gx[0]+ja[i%ja.length]} cy={ys(v)} r="5" fill={colorA} opacity="0.75"/>)}
           <line x1={gx[0]-20} y1={ys(mA)} x2={gx[0]+20} y2={ys(mA)} stroke={colorA} strokeWidth="3" strokeLinecap="round"/>
           <text x={gx[1]} y={H-6} textAnchor="middle" fontSize="11" fontWeight="500" fill={DGRAY}>{labelB}</text>
-          {dataB.map((v,i)=><circle key={i} cx={gx[1]+jb[i]} cy={ys(v)} r="5" fill={colorB} opacity="0.75"/>)}
+          {dataB.map((v,i)=><circle key={i} cx={gx[1]+jb[i%jb.length]} cy={ys(v)} r="5" fill={colorB} opacity="0.75"/>)}
           <line x1={gx[1]-20} y1={ys(mB)} x2={gx[1]+20} y2={ys(mB)} stroke={colorB} strokeWidth="3" strokeLinecap="round"/>
         </svg>
       </div>
-      <Legend items={[[labelA,colorA],[labelB,colorB]]}/>
     </div>
   );
 }
@@ -383,27 +384,54 @@ function LitterSurvPlot({ data, yLabel, yMin, yMax, yStep }) {
   );
 }
 
+function TabbedPanel({ tab, onTabChange, visitedTabs, height, children }) {
+  return (
+    <>
+      <div style={{display:'flex',background:WHITE,borderRadius:'8px 8px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',overflow:'hidden'}}>
+        {TABS.map((t,i) => (
+          <button key={t} onClick={() => onTabChange(i)}
+            style={{flex:1,padding:'10px 4px',fontSize:'0.82rem',fontWeight:600,border:'none',borderBottom:`3px solid ${tab===i?PURPLE:'transparent'}`,background:tab===i?WHITE:PAGEBG,color:tab===i?PURPLE:DGRAY,cursor:'pointer',position:'relative'}}>
+            {t}
+            {visitedTabs.has(i) && <span style={{position:'absolute',top:4,right:4,fontSize:10,color:MGRAY}}>✓</span>}
+          </button>
+        ))}
+      </div>
+      <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderTop:'none',borderRadius:'0 0 8px 8px',padding:'12px 16px',marginBottom:20,minHeight:height}}>
+        {children}
+      </div>
+    </>
+  );
+}
+
 function Screen0({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
-  const TABS = ['Age','Sex','Weight','Time to Fall','Litter'];
+  const [visitedTabs, setVisitedTabs] = useState(new Set([0]));
+  const allVisited = visitedTabs.size === TABS.length;
+
+  const handleTabChange = (i) => {
+    setTab(i);
+    setVisitedTabs(prev => {
+      const next = new Set(prev);
+      next.add(i);
+      return next;
+    });
+  };
+
   const handleSelect = (id) => {
-    if (correct) return;
+    if (correct || !allVisited) return;
     const next = sel === id ? '' : id;
     setSel(next);
     setFb(next ? MCQ1_FB[next] : null);
     if (next === 'rotarod') setCorrect(true);
   };
+
   return (
     <div>
       <InstructionCard title="Check for imbalance: baseline data">
         <p style={{margin:'0 0 10px',fontSize:'1rem',fontWeight:500,color:DGRAY}}>In this study, a transgenic ALS mouse model received either lithium or a control treatment. The goal was to determine whether lithium extends survival in an ALS mouse model. Group assignment was based on catching order, with the first two mice caught being assigned to the vehicle control and the second two to the lithium treatment.</p>
         <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:DGRAY}}>These plots show measurements collected before treatment began. Each tab also describes how that variable was handled during group assignment. Look for differences between the Control and Treatment groups.</p>
       </InstructionCard>
-      <div style={{display:'flex',background:WHITE,borderRadius:'8px 8px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',overflow:'hidden'}}>
-        {TABS.map((t,i) => (
-          <button key={t} onClick={() => setTab(i)} style={{flex:1,padding:'10px 4px',fontSize:'0.82rem',fontWeight:600,border:'none',borderBottom:`3px solid ${tab===i?PURPLE:'transparent'}`,background:tab===i?WHITE:PAGEBG,color:tab===i?PURPLE:DGRAY,cursor:'pointer'}}>{t}</button>
-        ))}
-      </div>
-      <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderTop:'none',borderRadius:'0 0 8px 8px',padding:'12px 16px',marginBottom:20}}>
+
+      <TabbedPanel tab={tab} onTabChange={handleTabChange} visitedTabs={visitedTabs} height={320}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:260}}>
           {tab===0 && <DotPlot dataCtrl={AGE_CTRL} dataTrt={AGE_TRT} yLabel="Age (days)" yMin={60} yMax={80} yStep={10}/>}
           {tab===1 && <SexBarChart ctrlMale={11} ctrlFemale={9} trtMale={10} trtFemale={10} yLabel="Count (n)" yMax={12}/>}
@@ -415,9 +443,11 @@ function Screen0({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
           <p style={{margin:'0 0 4px',fontSize:'0.8rem',fontWeight:600,color:MGRAY,textTransform:'uppercase',letterSpacing:'0.05em'}}>Study design</p>
           <p style={{margin:0,fontSize:'0.95rem',fontWeight:500,color:DGRAY,lineHeight:1.5}}>{TAB_CONTEXT[tab].text}</p>
         </div>
-      </div>
-      <p style={{margin:'0 0 12px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate appears imbalanced between the groups?</p>
-      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+      </TabbedPanel>
+
+      <p style={{margin:'0 0 8px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate appears imbalanced between the groups?</p>
+      {!allVisited && <p style={{margin:'0 0 12px',fontSize:'0.85rem',fontWeight:500,color:MGRAY}}>View all tabs to unlock this question.</p>}
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16,opacity:allVisited?1:0.4,pointerEvents:allVisited?'auto':'none'}}>
         {MCQ1_OPTIONS.map(opt => {
           const isSel = sel === opt.id;
           const isOk = correct && opt.id === 'rotarod';
@@ -426,8 +456,7 @@ function Screen0({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
           const radio = isOk ? '#4CAF50' : isSel ? PURPLE : MGRAY;
           return (
             <div key={opt.id} onClick={() => handleSelect(opt.id)}
-              style={{padding:'12px 16px',borderRadius:8,cursor:correct?'default':'pointer',border:`2px solid ${border}`,background:bg,display:'flex',alignItems:'center',gap:12,transition:'all 0.2s'}}
-            >
+              style={{padding:'12px 16px',borderRadius:8,cursor:(correct||!allVisited)?'default':'pointer',border:`2px solid ${border}`,background:bg,display:'flex',alignItems:'center',gap:12,transition:'all 0.2s'}}>
               <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,border:`2px solid ${radio}`,background:(isSel||isOk)?radio:'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
                 {(isSel||isOk) && <div style={{width:6,height:6,borderRadius:'50%',background:WHITE}}/>}
               </div>
@@ -442,34 +471,48 @@ function Screen0({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
 }
 
 function Screen1({ tab, setTab, sel, setSel, fb, setFb, correct, setCorrect }) {
-  const TABS = ['Age','Sex','Weight','Time to Fall','Litter'];
+  const [visitedTabs, setVisitedTabs] = useState(new Set([0]));
+  const allVisited = visitedTabs.size === TABS.length;
+
+  const handleTabChange = (i) => {
+    setTab(i);
+    setVisitedTabs(prev => {
+      const next = new Set(prev);
+      next.add(i);
+      return next;
+    });
+  };
+
   const handleSelect = (id) => {
-    if (correct) return;
+    if (correct || !allVisited) return;
     setSel(id);
     setFb(MCQ2_FB[id]);
     if (id === 'timetofail') setCorrect(true);
   };
+
   return (
     <div>
       <InstructionCard title="Examine the study results">
         <p style={{margin:0,fontSize:'1rem',fontWeight:500,color:DGRAY}}>These plots show survival time (days) for animals grouped by each covariate. Look for associations between each variable and survival time.</p>
       </InstructionCard>
-      <div style={{display:'flex',background:WHITE,borderRadius:'8px 8px 0 0',border:`1px solid ${BORDER}`,borderBottom:'none',overflow:'hidden'}}>
-        {TABS.map((t,i) => <button key={t} onClick={() => setTab(i)} style={{flex:1,padding:'10px 4px',fontSize:'0.82rem',fontWeight:600,border:'none',borderBottom:`3px solid ${tab===i?PURPLE:'transparent'}`,background:tab===i?WHITE:PAGEBG,color:tab===i?PURPLE:DGRAY,cursor:'pointer'}}>{t}</button>)}
-      </div>
-      <div style={{background:WHITE,border:`1px solid ${BORDER}`,borderTop:'none',borderRadius:'0 0 8px 8px',padding:'12px 16px',marginBottom:20,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:290}}>
-        {tab===0 && (
-          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'20px 0'}}>
-            <p style={{fontSize:'1rem',fontWeight:500,color:DGRAY,textAlign:'center',maxWidth:280}}>Age is constant across all mice — there is no variation in age that could correlate with survival.</p>
-          </div>
-        )}
-        {tab===1 && <DotPlot2 dataA={SURV_SEX.male} dataB={SURV_SEX.female} labelA="Male" labelB="Female" yLabel="Survival (days)" yMin={110} yMax={160} yStep={10} colorA={MGRAY} colorB={MGRAY}/>}
-        {tab===2 && <ScatterPlot xCtrl={WEIGHT_CTRL} yCtrl={SURV_WEIGHT_CTRL} xTrt={WEIGHT_TRT} yTrt={SURV_WEIGHT_TRT} xLabel="Baseline weight (g)" yLabel="Survival (days)" xMin={22} xMax={28} xStep={2} yMin={110} yMax={160} yStep={10} unified/>}
-        {tab===3 && <ScatterPlot xCtrl={ROTAROD_CTRL} yCtrl={SURV_DISEASE_CTRL} xTrt={ROTAROD_TRT} yTrt={SURV_DISEASE_TRT} xLabel="Baseline time to fall (s)" yLabel="Survival (days)" xMin={60} xMax={160} xStep={20} yMin={130} yMax={150} yStep={5} unified/>}
-        {tab===4 && <LitterSurvPlot data={SURV_LITTER} yLabel="Survival (days)" yMin={110} yMax={160} yStep={10}/>}
-      </div>
-      <p style={{margin:'0 0 12px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate shows the strongest association with survival time?</p>
-      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+
+      <TabbedPanel tab={tab} onTabChange={handleTabChange} visitedTabs={visitedTabs} height={290}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:260}}>
+          {tab===0 && (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',padding:'20px 0'}}>
+              <p style={{fontSize:'1rem',fontWeight:500,color:DGRAY,textAlign:'center',maxWidth:280}}>Age is constant across all mice — there is no variation in age that could correlate with survival.</p>
+            </div>
+          )}
+          {tab===1 && <DotPlot2 dataA={SURV_SEX.male} dataB={SURV_SEX.female} labelA="Male" labelB="Female" yLabel="Survival (days)" yMin={110} yMax={160} yStep={10} colorA={MGRAY} colorB={MGRAY}/>}
+          {tab===2 && <ScatterPlot xCtrl={WEIGHT_CTRL} yCtrl={SURV_WEIGHT_CTRL} xTrt={WEIGHT_TRT} yTrt={SURV_WEIGHT_TRT} xLabel="Baseline weight (g)" yLabel="Survival (days)" xMin={22} xMax={28} xStep={2} yMin={110} yMax={160} yStep={10} unified/>}
+          {tab===3 && <ScatterPlot xCtrl={ROTAROD_CTRL} yCtrl={SURV_DISEASE_CTRL} xTrt={ROTAROD_TRT} yTrt={SURV_DISEASE_TRT} xLabel="Baseline time to fall (s)" yLabel="Survival (days)" xMin={60} xMax={160} xStep={20} yMin={130} yMax={150} yStep={5} unified/>}
+          {tab===4 && <LitterSurvPlot data={SURV_LITTER} yLabel="Survival (days)" yMin={110} yMax={160} yStep={10}/>}
+        </div>
+      </TabbedPanel>
+
+      <p style={{margin:'0 0 8px',fontSize:'1rem',fontWeight:700,color:BLACK}}>Which covariate shows the strongest association with survival time?</p>
+      {!allVisited && <p style={{margin:'0 0 12px',fontSize:'0.85rem',fontWeight:500,color:MGRAY}}>View all tabs to unlock this question.</p>}
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16,opacity:allVisited?1:0.4,pointerEvents:allVisited?'auto':'none'}}>
         {MCQ2_OPTIONS.map(opt => (
           <MCQRow key={opt.id} opt={opt} sel={sel} correct={correct} correctId="timetofail" onClick={handleSelect}/>
         ))}
@@ -504,12 +547,7 @@ function Screen2() {
             <p style={{margin:'0 0 16px',fontSize:'1rem',fontWeight:700,color:BLACK}}>The mechanism</p>
             <p style={{margin:'0 0 16px',fontSize:'1rem',fontWeight:500,color:DGRAY}}>ALS reduces motor function. Mice with more advanced disease move more slowly — making them easier to catch. Because the first mice caught in each cage were assigned to Control, disease stage and group membership became linked.</p>
             <div style={{display:'flex',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
-              {[
-                'Advanced disease stage',
-                'Slower movement',
-                'Mouse caught first',
-                'Assigned to Control',
-              ].map((step,i,arr) => (
+              {['Advanced disease stage','Slower movement','Mouse caught first','Assigned to Control'].map((step,i,arr) => (
                 <React.Fragment key={step}>
                   <div style={{background:PAGEBG,border:`1px solid ${BORDER}`,borderRadius:6,padding:'8px 12px',fontSize:'0.85rem',fontWeight:600,color:BLACK,maxWidth:120,lineHeight:1.4}}>{step}</div>
                   {i < arr.length-1 && <span style={{color:PURPLE,fontWeight:700,fontSize:'1.2rem',alignSelf:'center',flexShrink:0}}>→</span>}
