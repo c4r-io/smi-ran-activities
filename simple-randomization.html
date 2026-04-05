@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #F3F3F3; }
+#root { max-width: 760px; margin: 0 auto; padding: 24px 16px 100px; }
+
+.progress-label { font-size: 0.8rem; font-weight: 500; color: #333132; margin-bottom: 6px; }
+.progress-track { height: 8px; background: #E0E0E0; border-radius: 4px; overflow: hidden; margin-bottom: 24px; }
+.progress-fill  { height: 100%; background: #6F00FF; border-radius: 4px; transition: width 0.3s ease; }
+
+.instruction-card {
+  background: #F0F4FF; border-left: 4px solid #0082FF;
+  border-radius: 4px; padding: 16px; margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.instruction-card p { font-size: 1rem; font-weight: 500; color: #333132; line-height: 1.6; }
+.instruction-card .question { font-size: 1rem; font-weight: 500; color: #202020; line-height: 1.5; }
+.instruction-card .question strong { font-weight: 700; }
+
+.plain-card {
+  background: #fff; border: 1px solid #E0E0E0;
+  border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;
+}
+.plain-card .study-title { font-size: 1rem; font-weight: 600; color: #202020; line-height: 1.6; margin-bottom: 14px; }
+
+/* Info alert */
+.info-alert {
+  background: #EDF4FF; border: 1px solid #AACBFF;
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.info-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #0082FF; color: #fff;
+  font-size: 0.75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.info-text { font-size: 0.95rem; font-weight: 500; color: #1A3A6B; line-height: 1.6; }
+
+/* Collapsible */
+.collapsible { background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+.collapsible-header {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; background: none; border: none; cursor: pointer;
+  font-family: inherit; text-align: left;
+}
+.chevron-circle {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #999; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.2s;
+}
+.chevron-circle.open { background: #6F00FF; }
+.chevron-svg { display: block; transition: transform 0.2s; }
+.chevron-svg.open { transform: rotate(180deg); }
+.collapsible-label { font-size: 0.9rem; font-weight: 600; color: #333132; }
+.collapsible-body { padding: 0 16px 14px; display: none; }
+.collapsible-body.open { display: block; }
+.collapsible-body .c-study-title { font-size: 0.9rem; font-weight: 500; color: #333132; line-height: 1.5; margin-bottom: 10px; }
+
+table { width: 100%; border-collapse: collapse; }
+td.lbl { font-weight: 700; color: #333132; white-space: nowrap; width: 34%; padding: 7px 12px 7px 0; vertical-align: top; border-bottom: 1px solid #E0E0E0; }
+td.lbl.first { border-top: 1px solid #E0E0E0; }
+td.val { font-weight: 500; color: #333132; line-height: 1.5; padding: 7px 0 7px 12px; border-bottom: 1px solid #E0E0E0; }
+td.val.first { border-top: 1px solid #E0E0E0; }
+td.slbl { font-size: 0.85rem; font-weight: 700; color: #333132; white-space: nowrap; width: 34%; padding: 5px 12px 5px 0; vertical-align: top; border-bottom: 1px solid #E0E0E0; }
+td.slbl.first { border-top: 1px solid #E0E0E0; }
+td.sval { font-size: 0.85rem; font-weight: 500; color: #333132; line-height: 1.4; padding: 5px 0 5px 12px; border-bottom: 1px solid #E0E0E0; }
+td.sval.first { border-top: 1px solid #E0E0E0; }
+
+textarea {
+  width: 100%; min-height: 88px; padding: 10px 12px;
+  font-size: 0.95rem; font-weight: 500; color: #333132;
+  border: 1px solid #E0E0E0; border-radius: 8px;
+  resize: vertical; font-family: inherit;
+  background: #fff; outline: none; transition: background 0.2s;
+}
+textarea:disabled { color: #999; background: #F3F3F3; }
+.submit-row { display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 20px; }
+.mcq-label { font-size: 1rem; font-weight: 700; color: #202020; margin-bottom: 12px; }
+
+.options { display: flex; flex-direction: column; gap: 10px; }
+.option { padding: 12px 16px; border-radius: 8px; cursor: pointer; border: 2px solid #E0E0E0; background: #fff; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
+.option:hover:not(.locked) { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
+.option.selected  { border-color: #6F00FF; background: rgba(111,0,255,0.08); }
+.option.correct   { border-color: #4CAF50; background: #E8F5E9; cursor: default; }
+.option.wrong     { border-color: #F44336; background: #FFEBEE; }
+.option.locked    { cursor: default; }
+.radio { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; border: 2px solid #999; background: transparent; display: flex; align-items: center; justify-content: center; }
+.radio.sel { border-color: #6F00FF; background: #6F00FF; }
+.radio.ok  { border-color: #4CAF50; background: #4CAF50; }
+.radio.err { border-color: #F44336; background: #F44336; }
+.radio-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.option-text { font-size: 1rem; font-weight: 500; color: #202020; }
+
+.feedback { border-radius: 4px; padding: 12px 16px; margin-top: 12px; font-size: 0.95rem; font-weight: 500; line-height: 1.5; }
+.feedback.success { background: #E8F5E9; border: 1px solid #4CAF50; color: #1B5E20; }
+.feedback.error   { background: #FFEBEE; border: 1px solid #F44336; color: #B71C1C; }
+
+.congrats-banner { background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; }
+.congrats-banner .c-title { font-size: 1.2rem; font-weight: 700; color: #1B5E20; margin-bottom: 8px; }
+.congrats-banner .c-body  { font-size: 1rem; font-weight: 500; color: #1B5E20; line-height: 1.6; }
+.summary-heading { font-size: 1rem; font-weight: 700; color: #202020; margin-bottom: 12px; }
+.summary-list { display: flex; flex-direction: column; gap: 10px; }
+.summary-row { background: #fff; border: 1px solid #E0E0E0; border-radius: 8px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; }
+.check-circle { width: 28px; height: 28px; border-radius: 50%; background: #4CAF50; color: #fff; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.s-title { font-size: 0.95rem; font-weight: 700; color: #202020; margin-bottom: 4px; }
+.s-body  { font-size: 0.9rem; font-weight: 500; color: #333132; line-height: 1.5; }
+
+.nav-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 32px; background: #fff; border-top: 1px solid #E0E0E0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+.btn { padding: 10px 20px; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: inherit; border: 2px solid transparent; }
+.btn-primary { background: #202020; color: #fff; border-color: #202020; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.btn-primary:hover:not(:disabled) { background: #6F00FF; border-color: #6F00FF; }
+.btn-primary:disabled { background: #999; border-color: #999; cursor: not-allowed; box-shadow: none; }
+.btn-secondary { background: #F3F3F3; color: #333132; border-color: #F3F3F3; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.btn-secondary:hover { background: #333132; color: #fff; border-color: #333132; }
+.tooltip-wrap { position: relative; display: inline-block; }
+.tooltip-text { display: none; position: absolute; bottom: 110%; right: 0; background: rgba(0,0,0,0.85); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; white-space: nowrap; pointer-events: none; z-index: 10; }
+.tooltip-wrap:hover .tooltip-text { display: block; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<nav class="nav-bar" id="nav-bar"></nav>
+<script>
+const OVERVIEW_ROWS = [
+  { label:'Intervention',    value:'Ketamine or vehicle, applied to cultured cortical neurons' },
+  { label:'Outcome Measure', value:'Dendritic spine density, counted from microscopy images' },
+  { label:'Sample',          value:'16 wells across two culture plates, 8 per condition' },
+  { label:'Data Collection', value:'Masked image scoring at 24 hours post-treatment' },
+];
+
+const TASKS = [
+  {
+    id:'task1',
+    context:'Before treatment begins, a random sequence must be generated assigning each of the 16 wells to ketamine or vehicle.',
+    questionParts:[{text:'What could go wrong if ',bold:false},{text:'you',bold:true},{text:' generated the ',bold:false},{text:'allocation sequence',bold:true},{text:'?',bold:false}],
+    summaryLabel:'you generated the allocation sequence',
+    correctId:'a',
+    options:[
+      {id:'a',label:'You would know which wells receive ketamine vs. vehicle — and that knowledge could affect your image scoring later.'},
+      {id:'b',label:'The sequence might not be truly random without specialist software.'},
+      {id:'c',label:'Well assignments could end up unequal between conditions.'},
+    ],
+    correctFeedback:'Exactly. If you generate the allocation, you know which wells received ketamine before you ever look at an image. Even without meaning to, that knowledge shapes what you see — you may unconsciously count more carefully, or be more generous, in wells you expect to show an effect.',
+    incorrectFeedback:{
+      b:"That's a real consideration, but it applies regardless of who generates the sequence — your colleague using the same tool would produce the same quality of randomness. Think about what you would now know as a result of doing this step yourself.",
+      c:"Unequal group sizes are a risk with simple randomization regardless of who runs it. Think about what information you would gain in the process.",
+    },
+    assignTo:'Your colleague',
+    explanation:'Your colleague generates and holds the allocation sequence so that you remain unaware of which wells received ketamine when you score the images.',
+  },
+  {
+    id:'task2',
+    context:'The ketamine and vehicle solutions must be pipetted into identical-looking tubes and labelled with a code number rather than their contents. Only the person who prepared them will know which code corresponds to which solution.',
+    questionParts:[{text:'What could go wrong if ',bold:false},{text:'you',bold:true},{text:' prepared the ',bold:false},{text:'coded solutions',bold:true},{text:'?',bold:false}],
+    summaryLabel:'you prepared the coded solutions',
+    correctId:'b',
+    options:[
+      {id:'a',label:'Solutions might be prepared at the wrong concentration without proper training.'},
+      {id:'b',label:'You would see which solution goes to which wells, breaking your mask before scoring.'},
+      {id:'c',label:'The coding system might be lost or undocumented.'},
+    ],
+    correctFeedback:'Right. To prepare the solutions, you would have to handle both ketamine and vehicle and know which goes to which wells. Coding is meant to conceal that — but you cannot be masked to information you generated yourself.',
+    incorrectFeedback:{
+      a:"Concentration errors are a valid concern, but that's a training issue that applies to either person. Think about what you would necessarily learn in the process of preparing and labelling the solutions yourself.",
+      c:"Documentation matters, but losing the code key is a risk regardless of who manages it. Think about what you would know as a direct result of doing this step.",
+    },
+    assignTo:'Your colleague',
+    explanation:'Your colleague prepares and codes all solutions so that they are indistinguishable to you when you apply them to the wells — keeping your mask intact.',
+  },
+  {
+    id:'task3',
+    context:'Microscopy images of each well are scored by counting dendritic spine density. These scores are the primary outcome of the study.',
+    questionParts:[{text:'What could go wrong if ',bold:false},{text:'your colleague',bold:true},{text:' scored the ',bold:false},{text:'images',bold:true},{text:'?',bold:false}],
+    summaryLabel:'your colleague scored the images',
+    correctId:'c',
+    options:[
+      {id:'a',label:'Your colleague may not be trained in spine density scoring.'},
+      {id:'b',label:'Scoring conventions might be applied inconsistently between observers.'},
+      {id:'c',label:'Your colleague prepared the solutions and knows the allocation — their counts could be unconsciously skewed toward the expected result.'},
+    ],
+    correctFeedback:'Exactly. Your colleague knows which wells received ketamine. When judging borderline cases — and spine counting always involves judgment calls — that knowledge creates pressure to see what they expect. This is observer bias, and it can distort results even without any intent to deceive.',
+    incorrectFeedback:{
+      a:"Training is a legitimate concern, but it's not specific to your colleague — it applies to any observer. Think about what your colleague already knows when they sit down to score the images.",
+      b:"Scoring methods can be standardised for any observer. Think about the prior knowledge your colleague brings to the task that you do not.",
+    },
+    assignTo:'You',
+    explanation:'You score the images while masked — unaware of which wells received ketamine — so your counts cannot be shaped by expectations.',
+  },
+];
+
+const TOTAL = 4;
+let screen = 0;
+const taskState = TASKS.map(() => ({ complete:false, phase:1, text:'', textSubmitted:false, selected:'', feedback:null, correct:false }));
+
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function txt(s) { return document.createTextNode(s); }
+
+const CHEVRON_SVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 5l4 4 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function buildCollapsible() {
+  const wrap = el('div','collapsible');
+  const btn  = el('button','collapsible-header');
+
+  const circle = el('div','chevron-circle');
+  circle.innerHTML = `<svg class="chevron-svg" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const chevronSvg = circle.querySelector('.chevron-svg');
+
+  const lbl = el('span','collapsible-label'); lbl.textContent = 'Study Overview';
+  btn.appendChild(circle); btn.appendChild(lbl);
+
+  const body = el('div','collapsible-body');
+  const st = el('p','c-study-title'); st.textContent = 'This pilot study investigates whether ketamine increases dendritic spine density in cultured cortical neurons.';
+  body.appendChild(st);
+
+  const tbl = el('table'); const tbody = el('tbody');
+  OVERVIEW_ROWS.forEach((row,i) => {
+    const tr = el('tr');
+    const tdL = el('td','slbl'+(i===0?' first':'')); tdL.textContent = row.label;
+    const tdV = el('td','sval'+(i===0?' first':'')); tdV.textContent = row.value;
+    tr.appendChild(tdL); tr.appendChild(tdV); tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); body.appendChild(tbl);
+
+  btn.onclick = () => {
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    circle.classList.toggle('open', !isOpen);
+    chevronSvg.classList.toggle('open', !isOpen);
+  };
+
+  wrap.appendChild(btn); wrap.appendChild(body);
+  return wrap;
+}
+
+function buildInfoAlert(text) {
+  const wrap = el('div','info-alert');
+  const icon = el('div','info-icon'); icon.textContent = 'i';
+  const p = el('p','info-text'); p.textContent = text;
+  wrap.appendChild(icon); wrap.appendChild(p);
+  return wrap;
+}
+
+function buildQuestionEl(parts) {
+  const p = el('p','question');
+  parts.forEach(part => {
+    if (part.bold) { const s = el('strong'); s.textContent = part.text; p.appendChild(s); }
+    else p.appendChild(txt(part.text));
+  });
+  return p;
+}
+
+function buildOverviewTable(small) {
+  const tbl = el('table'); const tbody = el('tbody');
+  OVERVIEW_ROWS.forEach((row,i) => {
+    const tr = el('tr');
+    const tdL = el('td', small ? 'slbl'+(i===0?' first':'') : 'lbl'+(i===0?' first':''));
+    tdL.textContent = row.label;
+    const tdV = el('td', small ? 'sval'+(i===0?' first':'') : 'val'+(i===0?' first':''));
+    tdV.textContent = row.value;
+    tr.appendChild(tdL); tr.appendChild(tdV); tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); return tbl;
+}
+
+function renderProgress() {
+  const pct = ((screen+1)/TOTAL)*100;
+  const wrap = el('div');
+  const lbl = el('p','progress-label'); lbl.textContent = `Screen ${screen+1} of ${TOTAL}`;
+  const track = el('div','progress-track');
+  const fill = el('div','progress-fill'); fill.style.width = pct+'%';
+  track.appendChild(fill); wrap.appendChild(lbl); wrap.appendChild(track);
+  return wrap;
+}
+
+function renderIntro() {
+  const wrap = el('div');
+
+  const icard = el('div','instruction-card');
+  const p1 = el('p'); p1.textContent = 'You are the primary researcher on this study. A colleague who is not otherwise involved in running the experiment is available to help with specific steps.';
+  icard.appendChild(p1);
+
+  const plain = el('div','plain-card');
+  const title = el('p','study-title'); title.textContent = 'This pilot study investigates whether ketamine increases dendritic spine density in cultured cortical neurons.';
+  plain.appendChild(title);
+  plain.appendChild(buildOverviewTable(false));
+
+  wrap.appendChild(icard); wrap.appendChild(plain);
+  return wrap;
+}
+
+function renderTask(idx) {
+  const task = TASKS[idx];
+  const ts   = taskState[idx];
+  const wrap = el('div');
+
+  wrap.appendChild(buildCollapsible());
+  wrap.appendChild(buildInfoAlert(task.context));
+
+  const icard = el('div','instruction-card');
+  icard.appendChild(buildQuestionEl(task.questionParts));
+  wrap.appendChild(icard);
+
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'Write your thinking here before seeing the options...';
+  ta.value = ts.text;
+  if (ts.textSubmitted) ta.disabled = true;
+
+  const submitRow = el('div','submit-row');
+  const submitBtn = el('button','btn btn-primary'); submitBtn.textContent = 'Submit';
+  submitBtn.disabled = ts.text.trim().length === 0;
+  ta.oninput = () => { ts.text = ta.value; submitBtn.disabled = ta.value.trim().length === 0; };
+  submitBtn.onclick = () => { ts.textSubmitted = true; ts.phase = 2; render(); };
+  submitRow.appendChild(submitBtn);
+
+  wrap.appendChild(ta);
+  if (!ts.textSubmitted) wrap.appendChild(submitRow);
+
+  if (ts.phase === 2) {
+    const mcqLabel = el('p','mcq-label'); mcqLabel.textContent = 'Select the option that best describes the risk:';
+    mcqLabel.style.marginTop = '20px';
+    wrap.appendChild(mcqLabel);
+
+    const optWrap = el('div','options');
+    task.options.forEach(opt => {
+      const isSel  = ts.selected === opt.id;
+      const isOk   = ts.correct && opt.id === task.correctId;
+      const isWrong = isSel && !ts.correct;
+      let cls = 'option';
+      if (isOk) cls += ' correct locked';
+      else if (isWrong) cls += ' wrong';
+      else if (isSel) cls += ' selected';
+      if (ts.correct) cls += ' locked';
+      let rCls = 'radio';
+      if (isOk) rCls += ' ok';
+      else if (isWrong) rCls += ' err';
+      else if (isSel) rCls += ' sel';
+      const optEl = el('div', cls);
+      const radio = el('div', rCls);
+      if (isSel || isOk) { const dot = el('div','radio-dot'); radio.appendChild(dot); }
+      const lbl = el('span','option-text'); lbl.textContent = opt.label;
+      optEl.appendChild(radio); optEl.appendChild(lbl);
+      if (!ts.correct) {
+        optEl.onclick = () => {
+          ts.selected = opt.id;
+          if (opt.id === task.correctId) { ts.correct = true; ts.complete = true; ts.feedback = {type:'success',text:task.correctFeedback}; }
+          else { ts.feedback = {type:'error', text:task.incorrectFeedback[opt.id]||'Not quite. Think about what information the wrong person gains by doing this step.'}; }
+          render();
+        };
+      }
+      optWrap.appendChild(optEl);
+    });
+    wrap.appendChild(optWrap);
+
+    if (ts.feedback) {
+      const fb = el('div','feedback '+ts.feedback.type); fb.textContent = ts.feedback.text;
+      wrap.appendChild(fb);
+    }
+  }
+  return wrap;
+}
+
+function renderCongrats() {
+  const wrap = el('div');
+  const banner = el('div','congrats-banner');
+  const bt = el('p','c-title'); bt.textContent = 'Activity Complete';
+  const bp = el('p','c-body'); bp.textContent = 'You worked through the three task assignments that determine whether this study produces valid results. The division of knowledge between you and your colleague is not just procedural — it is what prevents your expectations from shaping the data.';
+  banner.appendChild(bt); banner.appendChild(bp);
+  const heading = el('p','summary-heading'); heading.textContent = 'What you decided';
+  const list = el('div','summary-list');
+  TASKS.forEach(task => {
+    const row = el('div','summary-row');
+    const circle = el('div','check-circle'); circle.textContent = '✓';
+    const info = el('div');
+    const tt = el('p','s-title'); tt.textContent = 'If ' + task.summaryLabel + ' → ' + task.assignTo;
+    const tb = el('p','s-body'); tb.textContent = task.explanation;
+    info.appendChild(tt); info.appendChild(tb);
+    row.appendChild(circle); row.appendChild(info);
+    list.appendChild(row);
+  });
+  wrap.appendChild(banner); wrap.appendChild(heading); wrap.appendChild(list);
+  return wrap;
+}
+
+function renderNav() {
+  const nav = document.getElementById('nav-bar');
+  nav.innerHTML = '';
+  const isCongrats = screen === 4;
+  const canNext = screen === 0 ? true : screen >= 1 && screen <= 3 ? taskState[screen-1].complete : true;
+
+  if (screen > 0) {
+    const prev = el('button','btn btn-secondary'); prev.textContent = 'PREVIOUS';
+    prev.onclick = () => { screen--; render(); };
+    nav.appendChild(prev);
+  } else { nav.appendChild(el('div')); }
+
+  if (!isCongrats) {
+    const label = screen === 3 ? 'COMPLETE ACTIVITY' : 'NEXT';
+    const tw = el('div','tooltip-wrap');
+    if (!canNext) { const tip = el('div','tooltip-text'); tip.textContent = 'Select the correct answer to continue'; tw.appendChild(tip); }
+    const next = el('button','btn btn-primary'); next.textContent = label;
+    next.disabled = !canNext;
+    if (canNext) next.onclick = () => { screen++; render(); };
+    tw.appendChild(next); nav.appendChild(tw);
+  } else { nav.appendChild(el('div')); }
+}
+
+function render() {
+  const root = document.getElementById('root');
+  root.innerHTML = '';
+  const isCongrats = screen === 4;
+  if (!isCongrats) root.appendChild(renderProgress());
+  if (screen === 0) root.appendChild(renderIntro());
+  else if (screen >= 1 && screen <= 3) root.appendChild(renderTask(screen-1));
+  else if (isCongrats) root.appendChild(renderCongrats());
+  renderNav();
+}
+
+render();
+</script>
+</body>
+</html>
