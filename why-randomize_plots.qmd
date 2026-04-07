@@ -225,8 +225,8 @@ condition_label <- NULL
 ## Survival vs condition
 
 ```{r}
-make_panel_survival_condition <- function(dpi) {
-  ggplot(dat, aes(x = condition, y = survival, color = condition)) +
+make_panel_survival_condition <- function(df = dat, dpi) {
+  ggplot(df, aes(x = condition, y = survival, color = condition)) +
     geom_point(
       size = 3,
       alpha = 0.8,
@@ -244,7 +244,7 @@ make_panel_survival_condition <- function(dpi) {
       geom = "text",
       aes(label = after_stat(round(y, 1))),
       hjust = 0,
-      position = position_nudge(x = 0.3),
+      position = position_nudge(x = 0.28),
       family = "JetBrains Mono",
       size = c4r_geom_textsize(plot_dpi = dpi)
     ) +
@@ -255,9 +255,9 @@ make_panel_survival_condition <- function(dpi) {
     theme(legend.position = "none")
 }
 
-make_panel_survival_condition(view_dpi)
+make_panel_survival_condition(dpi = view_dpi)
 
-p <- make_panel_survival_condition(plot_dpi)
+p <- make_panel_survival_condition(dpi = plot_dpi)
 
 ## export plot as png ----
 plot_width <- 5 # inches
@@ -289,6 +289,15 @@ make_panel_rotarod_condition <- function(dpi, df = dat) {
       width = 0.5,
       linewidth = 0.8,
       alpha = 0.8
+    ) +
+    stat_summary(
+      fun = median,
+      geom = "text",
+      aes(label = after_stat(round(y, 1))),
+      hjust = 0,
+      position = position_nudge(x = 0.28),
+      family = "JetBrains Mono",
+      size = c4r_geom_textsize(plot_dpi = dpi)
     ) +
     theme_c4r(plot_dpi = dpi) +
     labs(x = condition_label, y = rotarod_label) +
@@ -327,7 +336,7 @@ make_panel_survival_rotarod <- function(dpi) {
       size = 3
     ) +
     geom_smooth(method = "lm", color = "black", se = FALSE) +
-    labs(x = rotarod_label, y = survival_label) + 
+    labs(x = rotarod_label, y = survival_label) +
     theme_c4r(plot_dpi = dpi) +
     coord_cartesian(xlim = rotarod_plot_range, ylim = survival_plot_range)
 }
@@ -358,16 +367,16 @@ rand_condition <- sample(c("Control", "Treatment"), NROW(dat), replace = TRUE)
 dat_rand <- dat
 dat_rand$condition <- rand_condition
 
-make_panel_rotarod_condition(view_dpi, df = dat_rand)
+make_panel_survival_condition(view_dpi, df = dat_rand)
 
-p <- make_panel_rotarod_condition(plot_dpi, df = dat_rand)
+p <- make_panel_survival_condition(plot_dpi, df = dat_rand)
 
 ## export plot as png ----
 plot_width <- 5 # inches
 plot_height <- 4 # inches
 
 ggsave(
-  "plot_rotarod_condition_rand.png",
+  "plot_survival_condition_rand.png",
   p,
   width = plot_width,
   height = plot_height,
