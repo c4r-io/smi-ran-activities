@@ -281,7 +281,7 @@ ggplot(dat, aes(x = litter, y = survival)) +
 # Plots in Slides
 
 ``` r
-rotarod_label <- "Rotarod Time (s)"
+rotarod_label <- "Time to Fall (s)"
 survival_label <- "Survival (days)"
 condition_label <- NULL
 ```
