@@ -468,3 +468,28 @@ ggsave(
   dpi = plot_dpi
 )
 ```
+
+## Corrected Plot (Survival vs. Condition)
+
+``` r
+make_panel_rotarod_condition(view_dpi, df = dat_rand)
+```
+
+![](why-randomize_plots_files/figure-commonmark/unnamed-chunk-12-1.png)
+
+``` r
+p <- make_panel_rotarod_condition(plot_dpi, df = dat_rand)
+
+## export plot as png ----
+plot_width <- 5 # inches
+plot_height <- 4 # inches
+
+ggsave(
+  "plot_rotarod_condition_rand.png",
+  p,
+  width = plot_width,
+  height = plot_height,
+  units = "in",
+  dpi = plot_dpi
+)
+```
