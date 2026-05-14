@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Randomization in the Lab</title>
+<style>
+/* ============================================================
+   CSS VARIABLES
+   ============================================================ */
+:root {
+  --accent:          #6F00FF;
+  --accent-light:    rgba(111,0,255,0.08);
+  --blue:            #0082FF;
+  --green:           #0CC800;
+  --green-light:     rgba(12,200,0,0.08);
+  --saline:          #FF5A00;
+  --saline-light:    rgba(255,90,0,0.10);
+  --black:           #202020;
+  --dark-gray:       #333132;
+  --accessible-gray: #757575;
+  --mid-gray:        #999999;
+  --int-mid-gray:    #C4C4C4;
+  --int-light-gray:  #E0E0E0;
+  --light-gray:      #F3F3F3;
+  --white:           #FFFFFF;
+  --drug-x:          #0082FF;
+}
+
+/* ============================================================
+   RESET + BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--light-gray);
+  color: var(--dark-gray);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+button { font-family: inherit; cursor: pointer; }
+textarea { font-family: inherit; }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+#content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 24px 96px;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.t-heading    { font-size: 1.2rem; font-weight: 700; color: var(--black); }
+.t-subheading { font-size: 1.0rem; font-weight: 700; color: var(--black); }
+.t-text       { font-size: 1.0rem; font-weight: 500; color: var(--dark-gray); }
+.t-caption    { font-size: 0.8rem; font-weight: 500; color: var(--dark-gray); }
+.mono         { font-family: 'JetBrains Mono', monospace; }
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.progress-wrap { margin-bottom: 24px; }
+.progress-labels { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.progress-labels span { font-size: 0.8rem; font-weight: 500; color: var(--dark-gray); }
+.progress-track { display: flex; gap: 4px; }
+.progress-segment {
+  flex: 1; height: 8px; border-radius: 4px;
+  background: var(--int-light-gray);
+  transition: background 0.4s ease;
+}
+.progress-segment.filled { background: var(--accent); }
+
+/* ============================================================
+   INSTRUCTION CARD
+   ============================================================ */
+.instruction-card {
+  background: #F0F4FF;
+  border-left: 4px solid var(--blue);
+  border-radius: 0 6px 6px 0;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.instruction-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--black); margin-bottom: 8px; }
+.instruction-card p  { font-size: 1.0rem; font-weight: 500; color: var(--dark-gray); line-height: 1.5; }
+.instruction-card p + p { margin-top: 8px; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: none; border-radius: 8px;
+  font-weight: 600; font-size: 1rem;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn:disabled { cursor: not-allowed; opacity: 0.7; }
+.btn-primary {
+  background: var(--black); color: var(--white);
+  border: 2px solid var(--black);
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.btn-primary.pulsing {
+  background: var(--accent); border-color: var(--accent);
+  animation: navPulse 1.6s ease-in-out infinite;
+}
+.btn-primary:disabled { background: var(--mid-gray); border-color: var(--mid-gray); }
+.btn-secondary {
+  background: var(--light-gray); color: var(--dark-gray);
+  border: 2px solid var(--int-light-gray);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--dark-gray); color: var(--white); }
+.btn-compact { padding: 8px 16px; font-size: 0.9rem; font-weight: 500; }
+.btn-mini    { padding: 4px 10px; font-size: 0.8rem; font-weight: 500; }
+
+@keyframes navPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(111,0,255,0); }
+  50%      { box-shadow: 0 0 0 8px rgba(111,0,255,0.25); }
+}
+
+/* ============================================================
+   NAVIGATION BAR
+   ============================================================ */
+#nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 32px;
+  background: var(--white);
+  border-top: 1px solid var(--int-light-gray);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+  z-index: 1000;
+}
+
+/* ============================================================
+   MCQ OPTIONS
+   ============================================================ */
+.mc-option {
+  border: 1px solid var(--int-light-gray);
+  border-radius: 6px;
+  background: var(--white);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 8px;
+}
+.mc-option:hover { border-color: var(--accent); background: rgba(111,0,255,0.04); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.mc-option.correct  { border: 2px solid var(--green);  background: var(--green-light); }
+.mc-option.wrong    { border: 2px solid var(--saline); background: var(--saline-light); }
+.mc-option.disabled { cursor: default; }
+.mc-option.disabled:hover { transform: none; box-shadow: none; }
+
+.mc-radio {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--int-mid-gray);
+  background: transparent; flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+}
+.mc-radio.filled-correct { border-color: var(--green);  background: var(--green); }
+.mc-radio.filled-wrong   { border-color: var(--saline); background: var(--saline); }
+.mc-radio-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--white); }
+.mc-label { font-size: 1rem; font-weight: 500; color: var(--dark-gray); flex: 1; }
+
+/* ============================================================
+   FEEDBACK BOXES
+   ============================================================ */
+.feedback-box {
+  margin-top: 10px; padding: 12px 14px; border-radius: 6px;
+  font-size: 0.8rem; font-weight: 500; line-height: 1.5;
+}
+.feedback-correct { background: var(--green-light);  border: 1px solid var(--green); }
+.feedback-wrong   { background: var(--saline-light); border: 1px solid var(--saline); }
+
+/* ============================================================
+   TEXTAREA
+   ============================================================ */
+.free-textarea {
+  width: 100%; min-height: 100px; padding: 12px;
+  font-size: 1rem; color: var(--dark-gray);
+  border: 2px solid var(--int-light-gray);
+  border-radius: 6px; resize: vertical; outline: none;
+  background: var(--white); transition: border-color 0.2s ease;
+}
+.free-textarea:focus, .free-textarea.has-value { border-color: var(--accent); }
+.free-hint { font-size: 0.8rem; font-weight: 500; margin-top: 4px; color: var(--mid-gray); }
+.free-hint.recorded { color: var(--green); }
+
+/* ============================================================
+   TWO-COLUMN LAYOUT
+   ============================================================ */
+.two-col { display: flex; gap: 28px; align-items: flex-start; }
+.two-col-left { flex: 1; min-width: 0; }
+.two-col-right {
+  width: 300px; flex-shrink: 0;
+  position: sticky; top: 24px;
+  border: 1px solid var(--int-light-gray);
+  border-radius: 8px; padding: 16px;
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.graphic-title {
+  font-size: 0.8rem; font-weight: 700; text-align: center;
+  margin-bottom: 14px; color: var(--dark-gray);
+}
+
+/* ============================================================
+   ANIMAL DOT + CAGE SLOT
+   ============================================================ */
+.animal-dot {
+  display: block; flex-shrink: 0;
+  transition: all 0.45s ease;
+}
+.animal-dot.neutral  { border-radius: 50%; background: var(--int-mid-gray); opacity: 0.35; }
+.animal-dot.drug-x   { border-radius: 50%; background: var(--drug-x); opacity: 0.85; }
+.animal-dot.saline   { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: var(--saline); opacity: 0.85; }
+
+.cage-slot {
+  background: var(--light-gray);
+  border: 1px solid var(--int-light-gray);
+  border-radius: 4px; padding: 7px 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.45s ease;
+}
+.cage-slot.drug-x { background: rgba(0,130,255,0.12); border-color: rgba(0,130,255,0.35); }
+.cage-slot.saline { background: rgba(255,90,0,0.10);  border-color: rgba(255,90,0,0.30); }
+.cage-slot.neutral { background: var(--light-gray); border-color: var(--int-light-gray); }
+
+/* ============================================================
+   ROOM / DAY PANELS (housing + behavior)
+   ============================================================ */
+.room-grid { display: flex; gap: 10px; margin-bottom: 10px; }
+.room-panel {
+  flex: 1; border: 2px solid var(--int-light-gray);
+  border-radius: 8px; padding: 10px 10px 12px;
+  background: var(--light-gray);
+}
+.room-label {
+  font-size: 0.8rem; font-weight: 700; text-align: center;
+  margin-bottom: 10px; color: var(--dark-gray);
+}
+.room-sublabel {
+  font-size: 0.7rem; font-weight: 500; text-align: center;
+  margin-bottom: 8px; color: var(--accessible-gray);
+}
+.cage-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+.cage-grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 5px; }
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+.legend { display: flex; gap: 14px; justify-content: center; margin-top: 10px; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot-circle   { width: 10px; height: 10px; border-radius: 50%; background: var(--drug-x); }
+.legend-dot-triangle { width: 10px; height: 10px; background: var(--saline); clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+.legend-label { font-size: 0.8rem; font-weight: 500; font-family: 'JetBrains Mono', monospace; color: var(--dark-gray); }
+.graphic-hint { font-size: 0.8rem; font-style: italic; text-align: center; color: var(--mid-gray); margin-top: 8px; }
+
+/* ============================================================
+   TREATMENT GRAPHIC
+   ============================================================ */
+.tg-wrap { font-family: 'JetBrains Mono', monospace; }
+.tg-headers {
+  display: grid; grid-template-columns: 72px 24px 52px 24px 1fr;
+  gap: 2px; margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--int-light-gray);
+}
+.tg-headers span { font-size: 0.75rem; font-weight: 500; color: var(--mid-gray); text-align: center; }
+.tg-rows { display: flex; flex-direction: column; gap: 8px; }
+.tg-row { display: grid; grid-template-columns: 72px 24px 52px 24px 1fr; gap: 2px; align-items: center; }
+.tg-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tg-group-label { font-size: 0.7rem; color: var(--mid-gray); text-align: center; }
+.tg-group-label.drug-x  { color: var(--drug-x); }
+.tg-group-label.saline  { color: var(--saline); }
+.tg-connector { height: 1px; background: var(--int-light-gray); }
+.tg-time {
+  background: rgba(111,0,255,0.10); border: 1px solid rgba(111,0,255,0.25);
+  border-radius: 4px; padding: 4px 0; text-align: center;
+  font-size: 0.72rem; font-weight: 700; color: var(--accent);
+}
+.tg-maze {
+  background: var(--light-gray); border: 1px solid var(--int-light-gray);
+  border-radius: 4px; padding: 4px 6px; text-align: center;
+  font-size: 0.7rem; color: var(--dark-gray);
+}
+
+/* ============================================================
+   STUDY OVERVIEW TIMELINE
+   ============================================================ */
+.timeline-wrap { position: relative; }
+.timeline-line {
+  position: absolute; top: 28px; left: 10%; right: 10%;
+  height: 2px; background: var(--int-light-gray); z-index: 0;
+}
+.timeline-nodes { display: flex; justify-content: space-around; position: relative; z-index: 1; }
+.timeline-node  { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 90px; }
+.timeline-circle {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 3px var(--white), 0 0 0 5px var(--int-light-gray);
+}
+.timeline-circle.done  { background: var(--green); box-shadow: 0 0 0 3px var(--white), 0 0 0 5px var(--green); }
+.timeline-circle.upcoming { background: var(--int-light-gray); }
+.timeline-node-label { font-size: 0.8rem; font-weight: 700; text-align: center; }
+.timeline-done-label  { font-size: 0.8rem; color: var(--green); margin-top: 3px; }
+
+/* ============================================================
+   SUMMARY ACCORDIONS
+   ============================================================ */
+.accordion { border: 1px solid var(--int-light-gray); border-radius: 8px; overflow: hidden; background: var(--white); margin-bottom: 10px; }
+.accordion-header {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  cursor: pointer; border: none; width: 100%; text-align: left;
+  background: var(--white); transition: background 0.2s ease;
+}
+.accordion-header.open { background: var(--light-gray); border-bottom: 1px solid var(--int-light-gray); }
+.accordion-title { font-size: 1rem; font-weight: 700; color: var(--black); flex: 1; }
+.accordion-chevron { font-size: 0.75rem; color: var(--accessible-gray); transition: transform 0.2s ease; }
+.accordion-chevron.open { transform: rotate(180deg); }
+.accordion-body { padding: 16px; }
+.accordion-body .two-col { flex-wrap: wrap; }
+.qa-block { margin-bottom: 14px; }
+.qa-question { font-size: 0.8rem; font-weight: 500; color: var(--accessible-gray); margin-bottom: 4px; }
+.qa-answer   { font-size: 1rem; font-weight: 500; color: var(--dark-gray); }
+.qa-answer.empty { font-style: italic; color: var(--mid-gray); }
+.stage-not-complete { font-size: 0.8rem; font-style: italic; color: var(--mid-gray); }
+
+.graphic-summary-panel {
+  width: 260px; flex-shrink: 0;
+  border: 1px solid var(--int-light-gray);
+  border-radius: 8px; padding: 14px;
+  background: var(--light-gray);
+}
+
+/* ============================================================
+   WORKSHEET TABLE
+   ============================================================ */
+.worksheet-heading { margin-top: 32px; margin-bottom: 6px; font-size: 1.2rem; font-weight: 700; color: var(--black); }
+.worksheet-desc { font-size: 1rem; font-weight: 500; color: var(--accessible-gray); margin-bottom: 16px; }
+.worksheet-panel { border: 1px solid var(--int-light-gray); border-radius: 8px; overflow: hidden; background: var(--white); }
+.worksheet-header {
+  padding: 12px 16px; background: var(--light-gray);
+  border-bottom: 1px solid var(--int-light-gray);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.worksheet-header-label { font-size: 0.8rem; font-weight: 700; color: var(--dark-gray); }
+.worksheet-scroll { overflow-x: auto; }
+.worksheet-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.worksheet-table th {
+  padding: 10px 12px; text-align: left; background: var(--light-gray);
+  border-bottom: 2px solid var(--int-light-gray);
+  font-size: 0.8rem; font-weight: 700; color: var(--dark-gray);
+  white-space: nowrap;
+}
+.worksheet-table th:not(:last-child), .worksheet-table td:not(:last-child) {
+  border-right: 1px solid var(--int-light-gray);
+}
+.worksheet-table td { padding: 14px 12px; border-bottom: 1px solid var(--int-light-gray); }
+.worksheet-table tr:last-child td { border-bottom: none; }
+
+/* ============================================================
+   CONGRATS SCREEN
+   ============================================================ */
+.congrats { text-align: center; padding: 40px 24px; }
+.congrats-emoji { font-size: 3rem; margin-bottom: 20px; }
+.congrats-title { font-size: 1.4rem; font-weight: 700; color: var(--black); margin-bottom: 16px; }
+.congrats-text  { font-size: 1rem; font-weight: 500; color: var(--dark-gray); max-width: 520px; margin: 0 auto 16px; }
+
+/* ============================================================
+   TISSUE GRAPHIC
+   ============================================================ */
+.tissue-grid { display: flex; gap: 8px; margin-bottom: 10px; }
+.tissue-batch { flex: 1; border: 2px solid var(--int-light-gray); border-radius: 8px; padding: 10px 8px 12px; background: var(--light-gray); }
+.tissue-batch-label { font-size: 0.8rem; font-weight: 700; text-align: center; margin-bottom: 8px; color: var(--dark-gray); }
+</style>
+</head>
+<body>
+<div id="content"></div>
+<div id="nav-bar"></div>
+
+<script>
+/* ============================================================
+   COLORS (for JS use)
+   ============================================================ */
+const C = {
+  accent:       '#6F00FF', accentLight: 'rgba(111,0,255,0.08)',
+  blue:         '#0082FF', green:       '#0CC800', greenLight: 'rgba(12,200,0,0.08)',
+  saline:       '#FF5A00', salineLight: 'rgba(255,90,0,0.10)',
+  black:        '#202020', darkGray:    '#333132', accessibleGray: '#757575',
+  midGray:      '#999999', intMidGray:  '#C4C4C4', intLightGray:   '#E0E0E0',
+  lightGray:    '#F3F3F3', white:       '#FFFFFF', drugX:          '#0082FF',
+};
+
+/* ============================================================
+   STAGE ICONS (SVG strings)
+   ============================================================ */
+const ICONS = {
+  groupAssignment: `<svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M27.6483 84.2238L7.81948 43.5686C7.45535 42.822 7.76538 41.9216 8.51197 41.5575L30.1795 30.9895C30.5568 30.8055 30.9938 30.7875 31.385 30.9399L41.9681 35.0641C42.3592 35.2165 42.7962 35.1986 43.1735 35.0146L70.8512 21.5152C71.5978 21.1511 72.4982 21.4611 72.8623 22.2077L88.6082 54.4917C88.9724 55.2383 88.6623 56.1387 87.9158 56.5028L29.6595 84.9163C28.9129 85.2804 28.0125 84.9704 27.6483 84.2238Z" fill="white"/><path d="M27.8623 84.9746L11.6538 42.7499C11.3555 41.9729 11.7451 41.1013 12.5229 40.8053L39.0195 30.7206C39.4104 30.5718 39.8457 30.5925 40.2207 30.7778L50.4039 35.8086C50.7817 35.9952 51.2204 36.0148 51.6133 35.8626L76.3636 26.2759C77.1398 25.9753 78.0126 26.3623 78.311 27.1394L91.1816 60.6686C91.4793 61.4441 91.092 62.3141 90.3165 62.6117L29.8055 85.8397C29.03 86.1374 28.16 85.7501 27.8623 84.9746Z" fill="#6E00FF"/><path d="M18.4688 44.623L29.2113 40.4994" stroke="white" stroke-width="2" stroke-linecap="round"/><rect x="66.8711" y="57.0605" width="18" height="9" rx="1" transform="rotate(-21 66.8711 57.0605)" fill="white"/></svg>`,
+  housing: `<svg width="34" height="34" viewBox="0 0 319 346" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="28.3657" y="136.099" width="262" height="209" fill="#6E00FF"/><path d="M159.366 3.09906L290.366 137.099H28.3657L159.366 3.09906Z" fill="#6E00FF"/><path fill-rule="evenodd" clip-rule="evenodd" d="M4.04061 163.14C1.80904 160.908 5.08793 154.011 11.3642 147.735L147.735 11.3642C154.011 5.08795 160.908 1.80906 163.14 4.04063C165.371 6.2722 162.092 13.1692 155.816 19.4455L19.4454 155.816C13.1692 162.092 6.27218 165.371 4.04061 163.14Z" fill="white"/><path fill-rule="evenodd" clip-rule="evenodd" d="M314.846 163.14C317.078 160.908 313.799 154.011 307.523 147.735L171.152 11.3642C164.876 5.08795 157.979 1.80906 155.747 4.04063C153.516 6.2722 156.794 13.1692 163.071 19.4455L299.441 155.816C305.718 162.092 312.615 165.371 314.846 163.14Z" fill="white"/><rect x="124.366" y="211.099" width="70" height="134" fill="white"/></svg>`,
+  treatment: `<svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.5774 29.5823L22.2657 29.2705C21.6643 28.6692 21.6643 27.6941 22.2657 27.0927L26.4518 22.9066C27.0532 22.3052 28.0282 22.3052 28.6296 22.9066L28.9413 23.2183L31.4585 20.7011C32.0599 20.0998 33.0349 20.0998 33.6363 20.7011L76.6628 63.7277C77.2642 64.3291 77.2642 65.3041 76.6628 65.9055L65.2642 77.3041C64.6628 77.9055 63.6878 77.9055 63.0864 77.3041L20.0598 34.2776C19.4584 33.6762 19.4584 32.7012 20.0598 32.0998L22.5774 29.5823Z" fill="white"/><path d="M31.3305 22.27L21.6289 31.9717C21.0276 32.573 21.0276 33.5481 21.6289 34.1494L48.9279 61.4484C49.5293 62.0498 50.5043 62.0498 51.1057 61.4484L60.8073 51.7468C61.4086 51.1454 61.4086 50.1704 60.8073 49.569L33.5083 22.27C32.9069 21.6687 31.9319 21.6687 31.3305 22.27Z" fill="#6E00FF"/><path d="M25.4377 23.9568L23.3164 26.0781L12.062 14.8237C11.4762 14.2379 11.4762 13.2882 12.062 12.7024C12.6478 12.1166 13.5975 12.1166 14.1833 12.7024L25.4377 23.9568Z" fill="#6E00FF"/><path d="M86.5288 75.2895L74.6494 87.1689L65.0245 77.544L76.9039 65.6646L86.5288 75.2895Z" fill="white"/><path d="M77.3867 61.0567L60.4161 78.0272C59.8303 78.613 59.8303 79.5628 60.4161 80.1486C61.0019 80.7343 61.9517 80.7343 62.5374 80.1486L79.508 63.178C80.0938 62.5922 80.0938 61.6425 79.508 61.0567C78.9222 60.4709 77.9725 60.4709 77.3867 61.0567Z" fill="#6E00FF"/><path d="M86.9526 74.8647L74.2247 87.5927C73.6389 88.1784 73.6389 89.1282 74.2247 89.714C74.8105 90.2998 75.7603 90.2998 76.346 89.714L89.074 76.9861C89.6597 76.4003 89.6598 75.4505 89.074 74.8647C88.4882 74.279 87.5384 74.279 86.9526 74.8647Z" fill="#6E00FF"/></svg>`,
+  behavior: `<svg width="34" height="34" viewBox="0 0 256 171" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M109.293 61.7344C56.8317 61.7344 37.6875 96.4705 37.6875 139.312L242.5 139.312C242.5 139.312 161.754 61.7344 109.293 61.7344Z" fill="#6E00FF"/><circle cx="140.101" cy="45.3351" r="37.2882" fill="#6E00FF"/><circle cx="45.3292" cy="45.3292" r="45.3292" fill="#6E00FF"/><path d="M106.891 119.727C119.67 119.674 129.986 109.248 129.933 96.4387C129.88 83.63 119.478 73.2892 106.7 73.342C93.9216 73.3947 83.6054 83.821 83.6583 96.6298C83.7111 109.439 94.1131 119.779 106.891 119.727Z" fill="white"/><path d="M100.65 96.6002L97.423 85.2577C98.4819 84.9877 99.5413 84.7841 100.601 84.7797C107.028 84.7532 112.349 90.0439 112.376 96.4855C112.402 102.927 107.125 108.261 100.698 108.288C94.2722 108.315 88.9501 103.024 88.9235 96.5823C88.915 94.5237 89.4367 92.5292 90.423 90.7321L100.65 96.5339L100.65 96.6002Z" fill="#231F20"/><circle cx="237.828" cy="134.563" r="7.57822" fill="white"/></svg>`,
+  tissue: `<svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M56.1573 71.7818C54.8136 71.9108 53.7168 70.804 53.7169 69.4542C53.7169 68.1044 54.8165 67.026 56.1564 66.8621C65.346 65.738 72.466 58.3493 72.4664 49.4293C72.4668 39.7342 64.0563 31.8473 53.7185 31.8468L40.145 31.8462C38.7952 31.8462 37.701 30.7519 37.7011 29.4021C37.7011 28.0523 38.7954 26.9581 40.1452 26.9581L53.7187 26.9587C60.0411 26.959 65.9902 29.285 70.4694 33.5076C74.9746 37.7556 77.456 43.4093 77.4557 49.4295C77.4554 55.4498 74.9735 61.1033 70.468 65.3509C66.5699 69.025 61.5587 71.2629 56.1573 71.7818Z" fill="white"/><path d="M55.5824 73.2953L26.3745 73.2941C24.9423 73.294 23.7812 74.455 23.7811 75.8872C23.7811 77.3194 24.9421 78.4805 26.3743 78.4806L55.5821 78.4819L55.5824 73.2953Z" fill="#6E00FF"/><path d="M78.1121 88.9248L25.1102 88.9224L25.1104 83.9355C25.1104 83.3627 25.5749 82.8983 26.1478 82.8983L51.3289 82.8994C51.8451 82.8994 52.2827 82.5199 52.3558 82.0089L53.9836 70.6263C54.0355 70.263 54.2756 69.9541 54.6149 69.8142L69.2983 63.7573C69.8646 63.5237 70.509 63.8291 70.6866 64.4154L78.1121 88.9248Z" fill="#6E00FF"/><path d="M78.1132 88.9252L25.1113 88.9229L25.1111 94.9982L78.1129 95.0005L78.1132 88.9252Z" fill="#6E00FF"/><path d="M47.5221 14.2391C47.6833 13.6894 47.3672 13.1172 46.8159 12.9612L31.7539 8.69757C31.2027 8.54153 30.6252 8.86069 30.464 9.41043L22.1758 37.6738C22.0146 38.2235 22.3307 38.7957 22.882 38.9517L37.944 43.2153C38.4952 43.3714 39.0727 43.0522 39.2339 42.5025L47.5221 14.2391Z" fill="white"/><path d="M34.7326 42.2977L26.1016 39.8545L24.1058 46.6603C23.9445 47.2101 24.2607 47.7822 24.812 47.9383L31.4469 49.8164C31.9981 49.9725 32.5756 49.6533 32.7368 49.1036L34.7326 42.2977Z" fill="#6E00FF"/><path d="M43 36.9437C47.0249 36.9439 50.2879 33.7383 50.2881 29.7839C50.2883 25.8294 47.0256 22.6235 43.0006 22.6234C38.9757 22.6232 35.7127 25.8288 35.7126 29.7832C35.7124 33.7377 38.9751 36.9436 43 36.9437Z" fill="#6E00FF"/></svg>`,
+};
+
+/* ============================================================
+   STAGE / SCREEN DATA
+   ============================================================ */
+const STAGES = [
+  { id: 'housing',   label: 'Housing Location',       icon: ICONS.housing },
+  { id: 'treatment', label: 'Administering Treatment', icon: ICONS.treatment },
+  { id: 'behavior',  label: 'Behavioral Measures',     icon: ICONS.behavior },
+  { id: 'tissue',    label: 'Processing Tissue',       icon: ICONS.tissue },
+];
+const SCREEN_LABELS = ['Study Overview', ...STAGES.map(s => s.label), 'Response Summary'];
+const TOTAL_SCREENS = 6;
+
+/* ============================================================
+   MC DATA
+   ============================================================ */
+const HOUSING_MC1 = { question: 'How should we assign housing location to each room?', options: [
+  { id: 'stratified',  label: 'Randomly assign so that each room has an equal number of treatment and control animals', correct: true,  feedback: 'Stratified randomization ensures each room has an equal mix of both groups, so any room differences affect Drug X and Saline animals equally.' },
+  { id: 'separated',   label: 'Assign all treatment animals to one room and all control animals to another',              correct: false, feedback: 'If all Drug X animals are in one room and all Saline animals are in the other, any difference between rooms becomes a confound.' },
+  { id: 'doesntmatter',label: 'Room assignment can stay the same as before the study began',                             correct: false, feedback: 'Keeping the pre-study room assignment means the distribution of groups across rooms is uncontrolled.' },
+]};
+const HOUSING_MC2 = { question: 'What problem does randomizing housing location best address?', options: [
+  { id: 'environmental', label: 'Environmental effects', correct: true,  feedback: 'Environmental differences between housing rooms, such as temperature, light, airflow, and noise, are the key confound that housing randomization controls for.' },
+  { id: 'order',         label: 'Order effects',         correct: false, feedback: 'Order effects relate to whether animals tested earlier perform differently than those tested later.' },
+  { id: 'experimenter',  label: 'Experimenter effects',  correct: false, feedback: 'Experimenter effects relate to whether animals are handled differently by separate experimenters.' },
+]};
+
+const TREATMENT_MC1 = { question: 'How should injections be administered?', options: [
+  { id: 'random',  label: 'Randomly assign the order of injections for treatment and control animals', correct: true,  feedback: 'Randomly assigning injection order ensures that any within-session variability affects both groups equally.' },
+  { id: 'cage',    label: 'Administer injections cage by cage',                                        correct: false, feedback: 'If certain animals are consistently injected at the same point in each session, that timing becomes a systematic difference.' },
+  { id: 'blocked', label: 'Administer all treatment injections followed by all control injections',    correct: false, feedback: 'If Drug X animals are always injected first, any systematic difference related to time of injection becomes a confound.' },
+]};
+const TREATMENT_MC2 = { question: 'What problem does randomizing injection order best address?', options: [
+  { id: 'order',        label: 'Order effects',         correct: true,  feedback: 'If animals are injected in a fixed order every session, the first animal is always handled early (lower stress, lower cortisol) and the last animal is always handled late (more stressed from waiting, more agitated), creating a systematic difference of injection order.' },
+  { id: 'environmental',label: 'Environmental effects', correct: false, feedback: 'Environmental effects relate to differences in location conditions, such as temperature, light, airflow, and noise.' },
+  { id: 'experimenter', label: 'Experimenter effects',  correct: false, feedback: 'Experimenter effects relate to whether animals are handled differently by separate experimenters.' },
+]};
+
+const BEHAVIOR_MC1 = { question: 'How should animals be assigned to testing days?', options: [
+  { id: 'random',  label: 'Randomly assign so that each experimenter has an equal number of treatment and control animals', correct: true,  feedback: 'Randomly assigning animals to experimenters each week ensures that any differences in handling or setup between experimenters affect both groups equally.' },
+  { id: 'byGroup', label: 'Assign animals by treatment group',                                                             correct: false, feedback: 'If the same experimenter always tests the same animals, any difference in handling or setup between experimenters becomes a confound.' },
+  { id: 'byRoom',  label: 'Assign animals by housing room',                                                               correct: false, feedback: 'If the same experimenter always tests the same animals, any difference in handling or setup between experimenters becomes a confound.' },
+]};
+const BEHAVIOR_MC2 = { question: 'What problem does randomizing the testing day best address?', options: [
+  { id: 'experimenter',  label: 'Experimenter effects',  correct: true,  feedback: 'If one experimenter always tests the same animals, differences in handling, cueing, or setup between experimenters become a confound.' },
+  { id: 'order',         label: 'Order effects',         correct: false, feedback: 'Order effects relate to whether animals tested earlier perform differently than those tested later.' },
+  { id: 'environmental', label: 'Environmental effects', correct: false, feedback: 'Environmental effects relate to differences in location conditions, such as temperature, light, airflow, and noise.' },
+]};
+
+const TISSUE_MC1 = { question: 'How should tissue be assigned to processing sets?', options: [
+  { id: 'stratified',   label: 'Randomly assign so each set contains both Drug X and Saline tissue',   correct: true,  feedback: 'Randomly assigning animals to batches ensures that any technical variability affects both groups equally.' },
+  { id: 'grouped',      label: 'Process all Drug X tissue first followed by Saline tissue',             correct: false, feedback: 'If Drug X animals are always processed separately from Saline animals, any technical variability between batches becomes a confound.' },
+  { id: 'doesntmatter', label: 'It does not matter how tissue is distributed across sets',              correct: false, feedback: 'Technical variability between batches can systematically affect results.' },
+]};
+const TISSUE_MC2 = { question: 'What problem does randomizing processing set best address?', options: [
+  { id: 'batch',        label: 'Batch effects',         correct: true,  feedback: 'Technical variability in processing, such as differences in staining intensity, reagent concentration, or processing time, becomes a confound when groups are not distributed across batches.' },
+  { id: 'experience',   label: 'Experience effects',    correct: false, feedback: 'Experience effects relate to changes in proficiency with technique performance over time.' },
+  { id: 'environmental',label: 'Environmental effects', correct: false, feedback: 'Environmental effects relate to differences in location conditions, such as temperature, light, airflow, and noise.' },
+]};
+
+const STAGE_DATA = {
+  housing:   { mc1: HOUSING_MC1,   mc2: HOUSING_MC2,   screen: 2, freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for housing location?' },
+  treatment: { mc1: TREATMENT_MC1, mc2: TREATMENT_MC2, screen: 3, freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for administering treatment?' },
+  behavior:  { mc1: BEHAVIOR_MC1,  mc2: BEHAVIOR_MC2,  screen: 4, freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for setting up or running behavioral measures?' },
+  tissue:    { mc1: TISSUE_MC1,    mc2: TISSUE_MC2,    screen: 5, freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for tissue processing or histological analysis?' },
+};
+
+const SUMMARY_INFO = [
+  { id: 'housing',   name: 'Housing Location',        mc1Q: HOUSING_MC1.question,   mc2Q: HOUSING_MC2.question,   freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for housing location?' },
+  { id: 'treatment', name: 'Administering Treatment', mc1Q: TREATMENT_MC1.question, mc2Q: TREATMENT_MC2.question, freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for administering treatment?' },
+  { id: 'behavior',  name: 'Behavioral Measures',     mc1Q: BEHAVIOR_MC1.question,  mc2Q: BEHAVIOR_MC2.question,  freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for setting up or running behavioral measures?' },
+  { id: 'tissue',    name: 'Processing Tissue',       mc1Q: TISSUE_MC1.question,    mc2Q: TISSUE_MC2.question,    freeQ: 'In this scenario, are there additional concerns that this step does or does not address? What other considerations do you have for tissue processing or histological analysis?' },
+];
+
+/* ============================================================
+   GRAPHIC ARRANGEMENTS
+   ============================================================ */
+const HOUSING_ARR = {
+  neutral:      { roomA: Array(6).fill('neutral'), roomB: Array(6).fill('neutral') },
+  stratified:   { roomA: ['drugX','saline','drugX','saline','drugX','saline'], roomB: ['saline','drugX','saline','drugX','saline','drugX'] },
+  separated:    { roomA: Array(6).fill('drugX'), roomB: Array(6).fill('saline') },
+  doesntmatter: { roomA: ['drugX','drugX','drugX','drugX','saline','saline'], roomB: ['saline','saline','saline','saline','drugX','drugX'] },
+};
+const TREATMENT_ORDERS = {
+  neutral: Array(6).fill('neutral'),
+  random:  ['drugX','saline','saline','drugX','drugX','saline'],
+  blocked: ['drugX','drugX','drugX','saline','saline','saline'],
+  cage:    ['drugX','drugX','saline','drugX','saline','saline'],
+};
+const BEHAVIOR_ARR = {
+  neutral:  { day1: Array(6).fill('neutral'), day2: Array(6).fill('neutral') },
+  random:   { day1: ['drugX','drugX','drugX','saline','saline','saline'], day2: ['saline','saline','saline','drugX','drugX','drugX'] },
+  byGroup:  { day1: Array(6).fill('drugX'), day2: Array(6).fill('saline') },
+  byRoom:   { day1: ['drugX','saline','drugX','saline','drugX','saline'], day2: ['saline','drugX','saline','drugX','saline','drugX'] },
+};
+const TISSUE_ARR = {
+  neutral:      { b1: Array(4).fill('neutral'), b2: Array(4).fill('neutral'), b3: Array(4).fill('neutral') },
+  stratified:   { b1: ['drugX','saline','drugX','saline'], b2: ['saline','drugX','saline','drugX'], b3: ['drugX','saline','drugX','saline'] },
+  grouped:      { b1: ['drugX','drugX','drugX','drugX'], b2: ['drugX','drugX','saline','saline'], b3: ['saline','saline','saline','saline'] },
+  doesntmatter: { b1: ['drugX','drugX','drugX','saline'], b2: ['saline','saline','saline','drugX'], b3: ['drugX','saline','drugX','saline'] },
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+function makeStageState() {
+  return { mc1Answer: null, mc1Confirmed: false, mc2Answer: null, mc2Confirmed: false, freeResponse: '' };
+}
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+const state = {
+  currentScreen: 1,
+  housing:   makeStageState(),
+  treatment: makeStageState(),
+  behavior:  makeStageState(),
+  tissue:    makeStageState(),
+  summaries: { housing: null, treatment: null, behavior: null, tissue: null },
+  summaryExpanded: { housing: true, treatment: false, behavior: false, tissue: false },
+  // Pre-shuffled options (done once at init)
+  shuffled: {
+    housingMC1: null, housingMC2: null,
+    treatmentMC1: null, treatmentMC2: null,
+    behaviorMC1: null, behaviorMC2: null,
+    tissueMC1: null, tissueMC2: null,
+  }
+};
+
+function initShuffled() {
+  state.shuffled.housingMC1   = shuffleArray(HOUSING_MC1.options);
+  state.shuffled.housingMC2   = shuffleArray(HOUSING_MC2.options);
+  state.shuffled.treatmentMC1 = shuffleArray(TREATMENT_MC1.options);
+  state.shuffled.treatmentMC2 = shuffleArray(TREATMENT_MC2.options);
+  state.shuffled.behaviorMC1  = shuffleArray(BEHAVIOR_MC1.options);
+  state.shuffled.behaviorMC2  = shuffleArray(BEHAVIOR_MC2.options);
+  state.shuffled.tissueMC1    = shuffleArray(TISSUE_MC1.options);
+  state.shuffled.tissueMC2    = shuffleArray(TISSUE_MC2.options);
+}
+
+function canGoNext() {
+  const s = state.currentScreen;
+  if (s === 1) return true;
+  if (s === 6) return true;
+  const stageId = STAGES[s - 2]?.id;
+  if (!stageId) return false;
+  const st = state[stageId];
+  return st.mc1Confirmed && st.mc2Confirmed && st.freeResponse.trim().length > 0;
+}
+
+/* ============================================================
+   GRAPHICS HTML HELPERS
+   ============================================================ */
+function dotHtml(type, size = 18) {
+  if (type === 'saline') return `<div class="animal-dot saline" style="width:${size}px;height:${size}px;"></div>`;
+  if (type === 'drugX')  return `<div class="animal-dot drug-x" style="width:${size}px;height:${size}px;"></div>`;
+  return `<div class="animal-dot neutral" style="width:${size}px;height:${size}px;"></div>`;
+}
+function cageSlotHtml(type, size = 18, delay = 0) {
+  return `<div class="cage-slot ${type}" style="transition:all 0.45s ease ${delay}ms">${dotHtml(type, size)}</div>`;
+}
+function legendHtml(showLegend) {
+  if (!showLegend) return `<p class="graphic-hint">Select an option to preview</p>`;
+  return `<div class="legend">
+    <div class="legend-item"><div class="legend-dot-circle"></div><span class="legend-label mono">Drug X</span></div>
+    <div class="legend-item"><div class="legend-dot-triangle"></div><span class="legend-label mono">Saline</span></div>
+  </div>`;
+}
+
+function housingGraphicHtml(selectedOption) {
+  const key = ['stratified','separated','doesntmatter'].includes(selectedOption) ? selectedOption : 'neutral';
+  const arr = HOUSING_ARR[key];
+  const isNeutral = key === 'neutral';
+  function roomHtml(label, cages) {
+    return `<div class="room-panel">
+      <div class="room-label">${label}</div>
+      <div class="cage-grid-3">${cages.map((t,i) => cageSlotHtml(t,18,i*40)).join('')}</div>
+    </div>`;
+  }
+  return `<div class="room-grid">${roomHtml('Room A', arr.roomA)}${roomHtml('Room B', arr.roomB)}</div>${legendHtml(!isNeutral)}`;
+}
+
+function treatmentGraphicHtml(selectedOption) {
+  const key = ['random','blocked','cage'].includes(selectedOption) ? selectedOption : 'neutral';
+  const animals = TREATMENT_ORDERS[key];
+  const isNeutral = key === 'neutral';
+  function rowHtml(type, i) {
+    let groupCell;
+    if (isNeutral) {
+      groupCell = `<div class="tg-group"><div class="animal-dot neutral" style="width:18px;height:18px;opacity:0.4;border-radius:50%;background:var(--int-mid-gray);"></div></div>`;
+    } else {
+      const labelClass = type === 'drugX' ? 'drug-x' : 'saline';
+      const label = type === 'drugX' ? 'Drug X' : 'Saline';
+      groupCell = `<div class="tg-group">${dotHtml(type,18)}<span class="tg-group-label ${labelClass}">${label}</span></div>`;
+    }
+    return `<div class="tg-row" style="transition:all 0.4s ease ${i*50}ms">
+      ${groupCell}
+      <div class="tg-connector"></div>
+      <div class="tg-time">3h</div>
+      <div class="tg-connector"></div>
+      <div class="tg-maze">Morris Water Maze</div>
+    </div>`;
+  }
+  return `<div class="tg-wrap">
+    <div class="tg-headers"><span>Group</span><span></span><span>Time</span><span></span><span>Morris Water Maze</span></div>
+    <div class="tg-rows">${animals.map((t,i) => rowHtml(t,i)).join('')}</div>
+    ${legendHtml(!isNeutral)}
+  </div>`;
+}
+
+function behaviorGraphicHtml(selectedOption) {
+  const key = ['random','byGroup','byRoom'].includes(selectedOption) ? selectedOption : 'neutral';
+  const arr = BEHAVIOR_ARR[key];
+  const isNeutral = key === 'neutral';
+  function dayHtml(label, exp, cages) {
+    return `<div class="room-panel">
+      <div class="room-label">${label}</div>
+      <div class="room-sublabel">${exp}</div>
+      <div class="cage-grid-3">${cages.map((t,i) => cageSlotHtml(t,18,i*40)).join('')}</div>
+    </div>`;
+  }
+  return `<div class="room-grid">${dayHtml('Behavior Day 1','Experimenter A',arr.day1)}${dayHtml('Behavior Day 2','Experimenter B',arr.day2)}</div>${legendHtml(!isNeutral)}`;
+}
+
+function tissueGraphicHtml(selectedOption) {
+  const key = ['stratified','grouped','doesntmatter'].includes(selectedOption) ? selectedOption : 'neutral';
+  const arr = TISSUE_ARR[key];
+  const isNeutral = key === 'neutral';
+  function batchHtml(label, cages) {
+    return `<div class="tissue-batch">
+      <div class="tissue-batch-label">${label}</div>
+      <div class="cage-grid-2">${cages.map((t,i) => cageSlotHtml(t,18,i*40)).join('')}</div>
+    </div>`;
+  }
+  return `<div class="tissue-grid">${batchHtml('Set 1',arr.b1)}${batchHtml('Set 2',arr.b2)}${batchHtml('Set 3',arr.b3)}</div>${legendHtml(!isNeutral)}`;
+}
+
+function stageGraphicHtml(stageId) {
+  if (stageId === 'housing')   return housingGraphicHtml('stratified');
+  if (stageId === 'treatment') return treatmentGraphicHtml('doesntmatter');
+  if (stageId === 'behavior')  return behaviorGraphicHtml('random');
+  if (stageId === 'tissue')    return tissueGraphicHtml('stratified');
+  return '';
+}
+
+/* ============================================================
+   SHARED RENDER HELPERS
+   ============================================================ */
+function progressHtml(current, total) {
+  const label = SCREEN_LABELS[current - 1] || '';
+  const segs = Array.from({length: total}, (_,i) =>
+    `<div class="progress-segment${i < current ? ' filled' : ''}"></div>`).join('');
+  return `<div class="progress-wrap">
+    <div class="progress-labels"><span>${label}</span><span>Step ${current} of ${total}</span></div>
+    <div class="progress-track">${segs}</div>
+  </div>`;
+}
+
+function instructionCardHtml(title, ...paragraphs) {
+  return `<div class="instruction-card"><h2>${title}</h2>${paragraphs.map(p => `<p>${p}</p>`).join('')}</div>`;
+}
+
+function mcOptionHtml(opt, selectedId) {
+  const isSelected = opt.id === selectedId;
+  const cls = isSelected ? (opt.correct ? 'correct' : 'wrong') : '';
+  const radioCls = isSelected ? (opt.correct ? 'filled-correct' : 'filled-wrong') : '';
+  const dot = isSelected ? '<div class="mc-radio-dot"></div>' : '';
+  return `<div class="mc-option ${cls}" data-option-id="${opt.id}" tabindex="0">
+    <div class="mc-radio ${radioCls}">${dot}</div>
+    <span class="mc-label">${opt.label}</span>
+  </div>`;
+}
+
+function feedbackHtml(opt) {
+  if (!opt || !opt.feedback) return '';
+  const cls = opt.correct ? 'feedback-correct' : 'feedback-wrong';
+  return `<div class="feedback-box ${cls}">${opt.feedback}</div>`;
+}
+
+function continueBtn(disabled) {
+  return `<div style="margin-top:12px;display:flex;justify-content:flex-end;">
+    <button class="btn btn-primary btn-compact" id="continue-btn" ${disabled ? 'disabled' : ''}>Continue</button>
+  </div>`;
+}
+
+function freeResponseHtml(stageId, freeQ) {
+  const val = state[stageId].freeResponse;
+  const hasVal = val.trim().length > 0;
+  return `<div>
+    <p class="t-subheading" style="margin-bottom:12px;">${freeQ}</p>
+    <textarea class="free-textarea${hasVal ? ' has-value' : ''}" id="free-textarea" placeholder="Share any additional thoughts...">${escHtml(val)}</textarea>
+    <p class="free-hint${hasVal ? ' recorded' : ''}" id="free-hint">${hasVal ? '✓ Response recorded — you can continue' : 'Enter a response to continue to the next stage'}</p>
+  </div>`;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   STAGE SCREEN RENDER
+   ============================================================ */
+function stageStep(stageId) {
+  const st = state[stageId];
+  if (!st.mc1Confirmed) return 'mc1';
+  if (!st.mc2Confirmed) return 'mc2';
+  return 'free';
+}
+
+function renderStageScreen(stageId, screenNum) {
+  const data = STAGE_DATA[stageId];
+  const st   = state[stageId];
+  const step = stageStep(stageId);
+  const stage = STAGES.find(s => s.id === stageId);
+
+  // Instruction card content
+  const cardContents = {
+    housing:   ['Housing Location', 'Your animals have been randomly assigned to Drug X or Saline groups and are ready to be housed. The cages must be split between two different rooms. Both rooms are maintained by the same experimenter.'],
+    treatment: ['Administering Treatment', 'Animals must receive weekly injections of either Drug X or Saline. All injections are administered at 3 hours prior to behavioral testing by the same experimenter.'],
+    behavior:  ['Behavioral Measures', 'Behavioral testing takes place on the Morris Water Maze. Half of the animals are tested on Day 1 and the other half on Day 2. Each testing day is run by a different experimenter in the same room.'],
+    tissue:    ['Tissue Processing', 'Brain tissue from all 12 animals needs to be processed for histology and will be split across 3 sets of 4 animals/set. Processing will be performed by the same experimenter on different days.'],
+  };
+  const [cardTitle, cardText] = cardContents[stageId];
+
+  // Get shuffled options
+  const mc1Opts = state.shuffled[stageId + 'MC1'];
+  const mc2Opts = state.shuffled[stageId + 'MC2'];
+
+  // Current selected options
+  const mc1Sel = data.mc1.options.find(o => o.id === st.mc1Answer);
+  const mc2Sel = data.mc2.options.find(o => o.id === st.mc2Answer);
+
+  // Left column content
+  let leftHtml = '';
+  if (step === 'mc1') {
+    leftHtml = `<div>
+      <p class="t-subheading" style="margin-bottom:12px;">${data.mc1.question}</p>
+      <div id="mc1-options">${mc1Opts.map(o => mcOptionHtml(o, st.mc1Answer)).join('')}</div>
+      ${st.mc1Answer ? feedbackHtml(mc1Sel) : ''}
+      ${continueBtn(!st.mc1Answer)}
+    </div>`;
+  } else if (step === 'mc2') {
+    leftHtml = `<div>
+      <p class="t-subheading" style="margin-bottom:12px;">${data.mc2.question}</p>
+      <div id="mc2-options">${mc2Opts.map(o => mcOptionHtml(o, st.mc2Answer)).join('')}</div>
+      ${st.mc2Answer ? feedbackHtml(mc2Sel) : ''}
+      ${continueBtn(!st.mc2Answer)}
+    </div>`;
+  } else {
+    leftHtml = freeResponseHtml(stageId, data.freeQ);
+  }
+
+  // Graphic
+  const graphicFns = { housing: housingGraphicHtml, treatment: treatmentGraphicHtml, behavior: behaviorGraphicHtml, tissue: tissueGraphicHtml };
+  const graphicAnswer = step === 'mc1' ? st.mc1Answer : (step === 'mc2' ? st.mc1Answer : st.mc1Answer);
+  const graphicTitles = { housing: 'Housing Arrangement', treatment: 'Injection Timeline', behavior: 'Testing Day Assignment', tissue: 'Set Assignment' };
+
+  return `
+    ${progressHtml(screenNum, TOTAL_SCREENS)}
+    ${instructionCardHtml(cardTitle, cardText)}
+    <div class="two-col">
+      <div class="two-col-left">${leftHtml}</div>
+      <div class="two-col-right">
+        <div class="graphic-title">${graphicTitles[stageId]}</div>
+        <div id="stage-graphic">${graphicFns[stageId](graphicAnswer)}</div>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   SCREEN 1: STUDY OVERVIEW
+   ============================================================ */
+function renderScreen1() {
+  const nodes = [
+    `<div class="timeline-node">
+      <div class="timeline-circle done">${ICONS.groupAssignment}</div>
+      <div>
+        <p class="timeline-node-label">Group Assignment</p>
+        <p class="timeline-done-label">✓ Done</p>
+      </div>
+    </div>`,
+    ...STAGES.map(s => `<div class="timeline-node">
+      <div class="timeline-circle upcoming">${s.icon}</div>
+      <div><p class="timeline-node-label">${s.label}</p></div>
+    </div>`)
+  ].join('');
+
+  return `${progressHtml(1, TOTAL_SCREENS)}
+    ${instructionCardHtml('Randomization in the Lab',
+      'You are studying whether Drug X, an NMDA receptor agonist, affects spatial learning and memory in mice. Animals have already been randomly assigned to Drug X or Saline groups.',
+      'But group assignment is just the beginning. There are several more stages in this study where randomization decisions need to be made. Your job is to move through each stage of the experimental design and identify whether randomization is needed.'
+    )}
+    <div style="border:1px solid var(--int-light-gray);border-radius:8px;background:var(--white);overflow:hidden;">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--int-light-gray);background:var(--light-gray);">
+        <p class="t-heading">Study Timeline</p>
+      </div>
+      <div style="padding:24px;">
+        <div class="timeline-wrap">
+          <div class="timeline-line"></div>
+          <div class="timeline-nodes">${nodes}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   SCREEN 6: RESPONSE SUMMARY
+   ============================================================ */
+function renderScreen6() {
+  function accordionHtml(info) {
+    const isOpen = state.summaryExpanded[info.id];
+    const summary = state.summaries[info.id];
+    let bodyHtml = '';
+    if (summary) {
+      const graphicHtml = `<div class="graphic-summary-panel">${stageGraphicHtml(info.id)}</div>`;
+      const qaHtml = `<div style="flex:1;min-width:0;">
+        <div class="qa-block">
+          <p class="qa-question">${info.mc1Q}</p>
+          <p class="qa-answer${!summary.mc1 ? ' empty' : ''}">${summary.mc1 || '—'}</p>
+        </div>
+        <div class="qa-block">
+          <p class="qa-question">${info.mc2Q}</p>
+          <p class="qa-answer${!summary.mc2 ? ' empty' : ''}">${summary.mc2 || '—'}</p>
+        </div>
+        <div class="qa-block">
+          <p class="qa-question">${info.freeQ}</p>
+          <p class="qa-answer${!summary.freeResponse ? ' empty' : ''}">${summary.freeResponse || 'No response recorded'}</p>
+        </div>
+      </div>`;
+      bodyHtml = `<div class="accordion-body"><div class="two-col" style="flex-wrap:wrap;">${qaHtml}${graphicHtml}</div></div>`;
+    } else {
+      bodyHtml = `<div class="accordion-body"><p class="stage-not-complete">Stage not yet completed.</p></div>`;
+    }
+    return `<div class="accordion">
+      <button class="accordion-header${isOpen ? ' open' : ''}" data-stage="${info.id}">
+        ${ICONS[info.id]}
+        <span class="accordion-title">${info.name}</span>
+        <span class="accordion-chevron${isOpen ? ' open' : ''}">▼</span>
+      </button>
+      ${isOpen ? bodyHtml : ''}
+    </div>`;
+  }
+
+  const worksheetRows = [0,1,2,3].map(() =>
+    `<tr>${['','','','',''].map(() => `<td></td>`).join('')}</tr>`
+  ).join('');
+
+  return `${progressHtml(6, TOTAL_SCREENS)}
+    ${instructionCardHtml('Response Summary', 'Here\'s a summary of the randomization decisions you made at each stage of the Drug X study.')}
+    <div>${SUMMARY_INFO.map(accordionHtml).join('')}</div>
+    <p class="worksheet-heading">Try it in your lab!</p>
+    <p class="worksheet-desc">Below is a worksheet you can use for your experiments to plan randomization at each step of a study.</p>
+    <div class="worksheet-panel">
+      <div class="worksheet-header">
+        <span class="worksheet-header-label">Randomization Worksheet</span>
+        <button class="btn btn-secondary btn-mini" id="download-csv">Download CSV</button>
+      </div>
+      <div class="worksheet-scroll">
+        <table class="worksheet-table">
+          <thead><tr>
+            <th>Stage</th><th>Randomize? (Y/N)</th><th>Type of randomization</th>
+            <th>How you would implement it</th><th>Other considerations</th>
+          </tr></thead>
+          <tbody>${worksheetRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   CONGRATS SCREEN
+   ============================================================ */
+function renderCongrats() {
+  return `<div class="congrats">
+    <div class="congrats-emoji">🎉</div>
+    <p class="congrats-title">Activity Complete</p>
+    <p class="congrats-text">You've worked through four stages of the Drug X study and identified where randomization applies — and why it matters — at each step. Randomization isn't just for group assignment; it's a tool you can apply throughout the entire study to protect the validity of your results.</p>
+  </div>`;
+}
+
+/* ============================================================
+   NAV BAR
+   ============================================================ */
+function renderNavBar() {
+  const s = state.currentScreen;
+  const isCongrats = s > TOTAL_SCREENS;
+  const canNext = canGoNext();
+  const nextLabel = s === TOTAL_SCREENS ? 'COMPLETE ACTIVITY' : 'NEXT';
+  const showPrev = s > 1 && !isCongrats;
+
+  const prevBtn = showPrev
+    ? `<button class="btn btn-secondary" id="prev-btn">← PREVIOUS</button>`
+    : `<div></div>`;
+  const nextBtn = isCongrats ? `<div></div>` :
+    `<button class="btn btn-primary${canNext ? ' pulsing' : ''}" id="next-btn" ${canNext ? '' : 'disabled'}>${nextLabel} →</button>`;
+
+  const prevCongratsBtn = isCongrats ? `<button class="btn btn-secondary" id="prev-btn">← PREVIOUS</button>` : '';
+
+  document.getElementById('nav-bar').innerHTML = `
+    ${isCongrats ? prevCongratsBtn : prevBtn}
+    ${nextBtn}`;
+}
+
+/* ============================================================
+   MAIN RENDER
+   ============================================================ */
+function render() {
+  const s = state.currentScreen;
+  let html = '';
+  if (s === 1)              html = renderScreen1();
+  else if (s === 2)         html = renderStageScreen('housing',   2);
+  else if (s === 3)         html = renderStageScreen('treatment', 3);
+  else if (s === 4)         html = renderStageScreen('behavior',  4);
+  else if (s === 5)         html = renderStageScreen('tissue',    5);
+  else if (s === 6)         html = renderScreen6();
+  else                      html = renderCongrats();
+
+  document.getElementById('content').innerHTML = html;
+  renderNavBar();
+  setupEvents();
+}
+
+function updateSummary(stageId) {
+  const st   = state[stageId];
+  const data = STAGE_DATA[stageId];
+  if (st.mc1Confirmed && st.mc2Confirmed && st.freeResponse.trim()) {
+    state.summaries[stageId] = {
+      mc1: data.mc1.options.find(o => o.id === st.mc1Answer)?.label || null,
+      mc2: data.mc2.options.find(o => o.id === st.mc2Answer)?.label || null,
+      freeResponse: st.freeResponse.trim(),
+    };
+  }
+}
+
+/* ============================================================
+   EVENT SETUP
+   ============================================================ */
+function setupEvents() {
+  const s = state.currentScreen;
+
+  // Navigation
+  document.getElementById('prev-btn')?.addEventListener('click', () => {
+    if (state.currentScreen > 1) { state.currentScreen--; render(); }
+  });
+  document.getElementById('next-btn')?.addEventListener('click', () => {
+    if (canGoNext()) { state.currentScreen++; render(); }
+  });
+
+  // Download CSV
+  document.getElementById('download-csv')?.addEventListener('click', () => {
+    const headers = ['Stage','Randomize? (Y/N)','Type of randomization','How you would implement it','Other considerations'];
+    const rows = [['','','','',''],['','','','',''],['','','','',''],['','','','','']];
+    const csv = [headers,...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download = 'randomization-worksheet.csv';
+    a.click();
+  });
+
+  // Accordion toggles (summary screen)
+  document.querySelectorAll('.accordion-header').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.stage;
+      state.summaryExpanded[id] = !state.summaryExpanded[id];
+      render();
+    });
+  });
+
+  // Stage screen interactions
+  if (s >= 2 && s <= 5) {
+    const stageId = STAGES[s - 2].id;
+    setupStageEvents(stageId);
+  }
+}
+
+function setupStageEvents(stageId) {
+  const st   = state[stageId];
+  const data = STAGE_DATA[stageId];
+  const step = stageStep(stageId);
+
+  // MC options
+  const optionContainer = document.getElementById(step === 'mc1' ? 'mc1-options' : step === 'mc2' ? 'mc2-options' : null);
+  if (optionContainer) {
+    optionContainer.querySelectorAll('.mc-option').forEach(el => {
+      el.addEventListener('click', () => {
+        const optId = el.dataset.optionId;
+        if (step === 'mc1') st.mc1Answer = optId;
+        else                st.mc2Answer = optId;
+        render(); // re-render to show feedback + update graphic
+      });
+    });
+  }
+
+  // Continue button
+  document.getElementById('continue-btn')?.addEventListener('click', () => {
+    if (step === 'mc1' && st.mc1Answer) {
+      st.mc1Confirmed = true;
+    } else if (step === 'mc2' && st.mc2Answer) {
+      st.mc2Confirmed = true;
+    }
+    updateSummary(stageId);
+    render();
+  });
+
+  // Free response textarea
+  const ta = document.getElementById('free-textarea');
+  if (ta) {
+    ta.addEventListener('input', () => {
+      st.freeResponse = ta.value;
+      // Update hint + nav button without full re-render
+      const hint = document.getElementById('free-hint');
+      const hasVal = ta.value.trim().length > 0;
+      if (hint) {
+        hint.textContent = hasVal ? '✓ Response recorded — you can continue' : 'Enter a response to continue to the next stage';
+        hint.className = 'free-hint' + (hasVal ? ' recorded' : '');
+      }
+      ta.className = 'free-textarea' + (hasVal ? ' has-value' : '');
+      renderNavBar();
+      if (hasVal) updateSummary(stageId);
+      // Re-attach nav events
+      document.getElementById('prev-btn')?.addEventListener('click', () => {
+        if (state.currentScreen > 1) { state.currentScreen--; render(); }
+      });
+      document.getElementById('next-btn')?.addEventListener('click', () => {
+        if (canGoNext()) { state.currentScreen++; render(); }
+      });
+    });
+    // Focus to restore cursor position
+    const len = ta.value.length;
+    ta.focus();
+    ta.setSelectionRange(len, len);
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+initShuffled();
+render();
+</script>
+</body>
+</html>
