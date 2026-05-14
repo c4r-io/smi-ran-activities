@@ -14,3 +14,6 @@
 
 ## Lesson 6
 [Stratified Randomization](https://c4r-io.github.io/smi-ran-activities/stratified-randomization-activity)
+
+## Lesson 7
+[Randomization in the Lab](https://c4r-io.github.io/smi-ran-activities/randomization-in-the-lab)
